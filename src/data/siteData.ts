@@ -49,13 +49,14 @@ export interface AchievementItem {
 }
 
 export const personalProfile = {
-  name: 'zrymax',
-  role: 'Frontend Engineer',
-  tagline: '把个人主页做成信息聚合入口，让效率和美感并存。',
+  name: 'zry',
+  role: 'Technical Documentation Engineer Intern , Hikrobot',
+  tagline: '个人主页',
   location: 'Hangzhou, China',
-  email: 'hello@zrymax.dev',
+  email: 'zry@zufe.edu.cn',
   blog: 'https://zryshuaige.space',
-  github: 'https://github.com',
+  github: 'https://github.com/zryshuaige',
+  research : '粒计算与知识发现, 智能决策与优化算法',
 }
 
 export const heroStats: HeroStat[] = [

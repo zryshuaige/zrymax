@@ -12,7 +12,8 @@ import { apiCatalog, personalProfile, techStack } from '../data/siteData'
       </p>
       <ul class="about-meta">
         <li>👤 作者：{{ personalProfile.name }}</li>
-        <li>💼 方向：{{ personalProfile.role }}</li>
+        <li>💼 职业：{{ personalProfile.role }}</li>
+        <li>🔬 研究：{{ personalProfile.research }}</li>
         <li>📍 地点：{{ personalProfile.location }}</li>
         <li>📮 联系：{{ personalProfile.email }}</li>
       </ul>
