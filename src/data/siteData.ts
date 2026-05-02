@@ -226,7 +226,7 @@ export const apiCatalog: ApiEntry[] = [
 
 export const personalAchievements: AchievementItem[] = [
   {
-    title: '《控制与决策》期刊一篇',
+    title: '《控制与决策》期刊一篇(北核/CSCD/EI)',
     icon: '📘',
   },
   {
