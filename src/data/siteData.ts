@@ -243,7 +243,7 @@ export const personalAchievements: AchievementItem[] = [
     subtitle: '学术科研成果',
     icon: '📘',
     theme: 'academic',
-    detailFile: '/achievements/journal-paper.md',
+    detailFile: 'achievements/journal-paper.md',
   },
   {
     id: 'mcm-award',
@@ -251,7 +251,7 @@ export const personalAchievements: AchievementItem[] = [
     subtitle: '国际建模实践',
     icon: '🏆',
     theme: 'modeling',
-    detailFile: '/achievements/mcm-award.md',
+    detailFile: 'achievements/mcm-award.md',
   },
   {
     id: 'lanqiao-prize',
@@ -259,7 +259,7 @@ export const personalAchievements: AchievementItem[] = [
     subtitle: '算法竞赛经历',
     icon: '🥉',
     theme: 'competition',
-    detailFile: '/achievements/lanqiao-prize.md',
+    detailFile: 'achievements/lanqiao-prize.md',
   },
   {
     id: 'innovation-project',
@@ -267,6 +267,6 @@ export const personalAchievements: AchievementItem[] = [
     subtitle: '创新创业项目',
     icon: '🚀',
     theme: 'innovation',
-    detailFile: '/achievements/innovation-project.md',
+    detailFile: 'achievements/innovation-project.md',
   },
 ]
