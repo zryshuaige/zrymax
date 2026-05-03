@@ -89,7 +89,8 @@ const openAchievement = async (item: AchievementItem) => {
   detailError.value = ''
   detailMarkdown.value = ''
   try {
-    const detailUrl = new URL(item.detailFile, import.meta.env.BASE_URL).toString()
+    const appBaseUrl = new URL(import.meta.env.BASE_URL, window.location.href)
+    const detailUrl = new URL(item.detailFile, appBaseUrl).toString()
     const response = await fetch(detailUrl, { cache: 'no-cache' })
     if (!response.ok) {
       throw new Error('读取经历详情失败')
