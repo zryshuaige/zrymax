@@ -6,6 +6,6 @@ export default defineConfig({
   base: '/zrymax/',
   plugins: [vue()],
   build: {
-    outDir: 'docs'
+    outDir: 'dist'
   }
 })
