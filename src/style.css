@@ -56,9 +56,15 @@ body {
     radial-gradient(circle at 10% 8%, #c8dcff 0, transparent 42%),
     radial-gradient(circle at 82% 12%, #f9d2ff 0, transparent 30%),
     linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+  background-size: 100% 100%, 100% 100%, 100% 100%;
   background-attachment: fixed;
   line-height: 1.6;
   letter-spacing: 0.1px;
+}
+
+:root[data-bg-motion='on'] body {
+  background-size: 150% 150%, 150% 150%, 180% 180%;
+  animation: page-gradient-flow 14s ease-in-out infinite;
 }
 
 a {
@@ -80,12 +86,82 @@ a {
   overflow: hidden;
 }
 
+.aurora-bg::before {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(90, 103, 255, 0.25) 0%, transparent 36%),
+    radial-gradient(circle at 75% 30%, rgba(255, 122, 201, 0.2) 0%, transparent 34%),
+    radial-gradient(circle at 65% 78%, rgba(98, 227, 187, 0.2) 0%, transparent 40%);
+  opacity: 0;
+  mix-blend-mode: screen;
+}
+
+.aurora-bg.dynamic::before {
+  opacity: 0.88;
+  animation: bg-drift 16s ease-in-out infinite;
+}
+
+.aurora-bg::after {
+  content: '';
+  position: absolute;
+  inset: -35%;
+  background: conic-gradient(
+    from 180deg at 50% 50%,
+    rgba(92, 112, 255, 0.24),
+    rgba(255, 124, 203, 0.14),
+    rgba(108, 239, 194, 0.2),
+    rgba(92, 112, 255, 0.24)
+  );
+  opacity: 0;
+  filter: blur(56px);
+}
+
+.aurora-bg.dynamic::after {
+  opacity: 0.7;
+  animation: bg-spin 22s linear infinite;
+}
+
+.motion-grid {
+  position: absolute;
+  inset: -40%;
+  opacity: 0;
+  background-image:
+    linear-gradient(rgba(120, 138, 255, 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 138, 255, 0.22) 1px, transparent 1px);
+  background-size: 56px 56px;
+  filter: blur(0.2px);
+  transform: perspective(820px) rotateX(58deg) translateY(22%);
+}
+
+.aurora-bg.dynamic .motion-grid {
+  opacity: 0.3;
+  animation: grid-drift 8s linear infinite;
+}
+
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(8px);
-  opacity: 0.55;
+  filter: blur(18px);
+  opacity: 0.42;
   animation: float 12s ease-in-out infinite;
+  will-change: transform;
+}
+
+.aurora-bg.dynamic .blob {
+  opacity: 0.72;
+  animation-duration: 9s;
+}
+
+.aurora-bg:not(.dynamic) .blob {
+  animation: none;
+  opacity: 0.34;
+}
+
+.aurora-bg:not(.dynamic) .flow-light {
+  animation: none;
+  opacity: 0;
 }
 
 .blob-a {
@@ -112,6 +188,34 @@ a {
   bottom: -180px;
   background: rgba(98, 227, 187, 0.18);
   animation-delay: -6s;
+}
+
+.flow-light {
+  position: absolute;
+  inset: -25%;
+  border-radius: 50%;
+  opacity: 0;
+  filter: blur(28px);
+  transition: opacity 0.3s ease;
+}
+
+.aurora-bg.dynamic .flow-light {
+  opacity: 0.28;
+}
+
+.flow-a {
+  background: radial-gradient(circle, rgba(128, 146, 255, 0.38) 0%, transparent 58%);
+  animation: hue-float 18s ease-in-out infinite;
+}
+
+.flow-b {
+  background: radial-gradient(circle, rgba(255, 139, 214, 0.28) 0%, transparent 62%);
+  animation: hue-float-2 22s ease-in-out infinite;
+}
+
+.flow-c {
+  background: radial-gradient(circle, rgba(123, 219, 255, 0.32) 0%, transparent 58%);
+  animation: hue-float-3 16s ease-in-out infinite;
 }
 
 .glass-card {
@@ -145,13 +249,23 @@ a {
 .brand-badge {
   width: 38px;
   height: 38px;
-  border-radius: 12px;
+  border-radius: 11px;
   display: grid;
   place-items: center;
-  font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(130, 145, 255, 0.2);
   box-shadow: 0 8px 18px rgba(90, 103, 255, 0.35);
+  overflow: hidden;
+}
+
+:root[data-theme='dark'] .brand-badge {
+  background: rgba(20, 30, 55, 0.88);
+}
+
+.brand-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .brand-name {
@@ -203,6 +317,14 @@ a {
   background: rgba(142, 157, 255, 0.3);
 }
 
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .page-wrap {
   width: min(1180px, 94vw);
   margin: 0 auto;
@@ -221,6 +343,120 @@ a {
   text-align: center;
   color: var(--text-secondary);
   font-size: 0.86rem;
+}
+
+.music-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(12, 18, 36, 0.28);
+  backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.music-popup {
+  width: min(460px, 96vw);
+  padding: 1rem;
+}
+
+.music-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.music-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.music-close-btn {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.42rem 0.7rem;
+  background: rgba(130, 145, 255, 0.16);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.music-subtitle {
+  margin: 0.42rem 0 0.8rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.music-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.music-item {
+  border: 1px solid rgba(130, 145, 255, 0.28);
+  border-radius: 12px;
+  background: rgba(130, 145, 255, 0.08);
+  color: var(--text-primary);
+  text-align: left;
+  padding: 0.62rem 0.75rem;
+  cursor: pointer;
+  transition: all 0.24s ease;
+}
+
+.music-item:hover {
+  transform: translateY(-1px);
+}
+
+.music-item.active {
+  border-color: rgba(124, 77, 255, 0.5);
+  background: linear-gradient(130deg, rgba(90, 103, 255, 0.2), rgba(124, 77, 255, 0.2));
+}
+
+.music-item-name {
+  display: block;
+  font-weight: 700;
+}
+
+.music-item-artist {
+  display: block;
+  margin-top: 0.12rem;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
+.music-player {
+  width: 100%;
+  margin-top: 0.85rem;
+}
+
+.music-actions {
+  margin-top: 0.86rem;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.music-control-btn {
+  border: 1px solid rgba(130, 145, 255, 0.26);
+  border-radius: 10px;
+  background: rgba(130, 145, 255, 0.1);
+  color: var(--text-primary);
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.music-now-playing {
+  margin: 0.58rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.bg-audio-player {
+  position: fixed;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .home-view {
@@ -395,6 +631,21 @@ a {
   font-size: 1.1rem;
 }
 
+.highlight-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.56rem;
+}
+
+.highlight-item {
+  border-radius: 12px;
+  padding: 0.62rem 0.74rem;
+  border: 1px solid rgba(130, 145, 255, 0.24);
+  font-size: 0.92rem;
+}
+
 .chip-wrap {
   display: flex;
   flex-wrap: wrap;
@@ -458,6 +709,9 @@ a {
 
 .search-panel {
   padding: 1.2rem;
+  position: sticky;
+  top: 6.2rem;
+  z-index: 8;
 }
 
 .search-panel h2 {
@@ -482,8 +736,24 @@ a {
   color: var(--text-secondary);
   border-radius: 999px;
   padding: 0.45rem 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   cursor: pointer;
   transition: all 0.24s ease;
+}
+
+.engine-logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(130, 145, 255, 0.24);
+}
+
+:root[data-theme='dark'] .engine-logo {
+  background: rgba(7, 11, 24, 0.58);
 }
 
 .engine-tab.active {
@@ -520,6 +790,33 @@ a {
   color: #fff;
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   cursor: pointer;
+}
+
+.category-tabs {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.category-tab {
+  border: 1px solid rgba(130, 145, 255, 0.32);
+  background: rgba(130, 145, 255, 0.08);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  transition: all 0.24s ease;
+}
+
+.category-tab:hover {
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.category-tab.active {
+  color: #fff;
+  background: linear-gradient(130deg, var(--accent), var(--accent-strong));
 }
 
 .navigator-layout {
@@ -570,6 +867,7 @@ a {
 
 .section-card {
   padding: 1rem;
+  scroll-margin-top: 11.5rem;
 }
 
 .section-head {
@@ -614,6 +912,25 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+}
+
+.site-info {
+  display: flex;
+  align-items: center;
+  gap: 0.56rem;
+}
+
+.site-logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(130, 145, 255, 0.22);
+}
+
+:root[data-theme='dark'] .site-logo {
+  background: rgba(7, 11, 24, 0.56);
 }
 
 .site-name {
@@ -825,6 +1142,82 @@ a {
   }
 }
 
+@keyframes hue-float {
+  0%,
+  100% {
+    transform: translate(-20%, -10%) scale(1);
+  }
+  50% {
+    transform: translate(18%, 12%) scale(1.16);
+  }
+}
+
+@keyframes hue-float-2 {
+  0%,
+  100% {
+    transform: translate(18%, 10%) scale(1);
+  }
+  50% {
+    transform: translate(-16%, -14%) scale(1.14);
+  }
+}
+
+@keyframes bg-drift {
+  0% {
+    transform: translate3d(-4%, -3%, 0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate3d(5%, 4%, 0) rotate(3deg) scale(1.08);
+  }
+  100% {
+    transform: translate3d(-4%, -3%, 0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes bg-spin {
+  from {
+    transform: rotate(0deg) scale(1);
+  }
+  to {
+    transform: rotate(360deg) scale(1.08);
+  }
+}
+
+@keyframes hue-float-3 {
+  0%,
+  100% {
+    transform: translate(-14%, 10%) scale(1);
+  }
+  50% {
+    transform: translate(10%, -16%) scale(1.22);
+  }
+}
+
+@keyframes page-gradient-flow {
+  0%,
+  100% {
+    background-position:
+      8% 8%,
+      82% 14%,
+      50% 50%;
+  }
+  50% {
+    background-position:
+      24% 18%,
+      72% 24%,
+      42% 58%;
+  }
+}
+
+@keyframes grid-drift {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 0 56px, 56px 0;
+  }
+}
+
 @media (max-width: 980px) {
   .top-nav {
     flex-wrap: wrap;
@@ -836,16 +1229,16 @@ a {
     justify-content: center;
   }
 
+  .toolbar-actions {
+    width: 100%;
+    justify-content: center;
+  }
+
   .hero-grid,
   .home-bottom-grid,
-  .navigator-layout,
   .about-meta,
   .achievement-grid {
     grid-template-columns: 1fr;
-  }
-
-  .navigator-aside {
-    position: static;
   }
 }
 

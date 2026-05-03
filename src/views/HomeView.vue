@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { featuredProjects, heroStats, personalProfile, skillTags } from '../data/siteData'
+import { featuredProjects, heroStats, personalHighlights, personalProfile } from '../data/siteData'
 import { fetchHitokoto, fetchWeather, weatherCodeToText } from '../services/apis'
 import { getCardColorStyle } from '../utils/cardPalette'
 
@@ -101,16 +101,17 @@ onMounted(async () => {
 
     <div class="home-bottom-grid">
       <article class="glass-card skills-card">
-        <h2 class="skills-title">⚡ 技术关键词</h2>
-        <div class="chip-wrap">
-          <span
-            v-for="(tag, index) in skillTags"
-            :key="tag"
-            class="chip color-card"
+        <h2 class="skills-title">🙋 个人速览</h2>
+        <ul class="highlight-list">
+          <li
+            v-for="(item, index) in personalHighlights"
+            :key="item"
+            class="highlight-item color-card"
             :style="getCardColorStyle(index)"
-            >{{ tag }}</span
           >
-        </div>
+            {{ item }}
+          </li>
+        </ul>
       </article>
 
       <article class="glass-card projects-card">

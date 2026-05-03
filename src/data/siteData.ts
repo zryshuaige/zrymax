@@ -76,6 +76,13 @@ export const skillTags: string[] = [
   'Accessibility',
 ]
 
+export const personalHighlights: string[] = [
+  '🎯 研究方向：粒计算与知识发现、智能决策与优化算法',
+  '🧠 关注重点：体验驱动开发与稳定交付',
+  '📚 日常节奏：输入新知 + 输出总结',
+  '🤝 欢迎交流：科研、前端体验与产品思考',
+]
+
 export const featuredProjects: FeaturedProject[] = [
   {
     name: 'One Dashboard',
