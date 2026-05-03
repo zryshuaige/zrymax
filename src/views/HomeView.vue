@@ -49,7 +49,9 @@ onMounted(async () => {
   <section class="page home-view">
     <div class="hero-grid">
       <article class="glass-card profile-card">
-        <div class="avatar-ring">ZR</div>
+        <div class="avatar-ring" aria-label="ZR logo">
+          <span class="hero-wordmark">ZR</span>
+        </div>
         <p class="greeting">{{ greeting }}</p>
         <h1>{{ personalProfile.name }}</h1>
         <p class="tagline">{{ personalProfile.tagline }}</p>

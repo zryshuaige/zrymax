@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
-import siteLogo from './assets/logo.png'
+import { fetchWeather } from './services/apis'
 
 type ThemeMode = 'light' | 'dark'
+type WeatherScene = 'clear' | 'cloudy' | 'rain' | 'snow' | 'fog' | 'storm'
 type MusicTrack = {
   id: string
   name: string
@@ -27,28 +28,29 @@ const navItems: NavItem[] = [
 const theme = ref<ThemeMode>('light')
 const dynamicBackground = ref(true)
 const showMusicPopup = ref(false)
-const activeTrackId = ref('forest')
+const activeTrackId = ref('fur-elise')
 const audioRef = ref<HTMLAudioElement | null>(null)
 const isPlaying = ref(false)
+const weatherScene = ref<WeatherScene>('clear')
 
 const musicTracks: MusicTrack[] = [
   {
-    id: 'forest',
-    name: 'Focus Flow',
-    artist: 'SoundHelix',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    id: 'fur-elise',
+    name: 'Fur Elise',
+    artist: 'Ludwig van Beethoven',
+    url: 'https://upload.wikimedia.org/wikipedia/commons/1/15/For_Elise_%28F%C3%BCr_Elise%29_Beethoven_JMC_Han.ogg',
   },
   {
-    id: 'calm',
-    name: 'Night Coding',
-    artist: 'SoundHelix',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+    id: 'moonlight',
+    name: 'Moonlight Sonata',
+    artist: 'Ludwig van Beethoven',
+    url: 'https://upload.wikimedia.org/wikipedia/commons/3/34/Moonlight_Sonata_2.ogg',
   },
   {
-    id: 'dream',
-    name: 'Soft Ambient',
-    artist: 'SoundHelix',
-    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+    id: 'swan-lake',
+    name: 'Swan Lake (Act III)',
+    artist: 'Pyotr Ilyich Tchaikovsky',
+    url: 'https://upload.wikimedia.org/wikipedia/commons/b/b4/Tchaikovsky_-_Swan_Lake_Op.20_-_Act_III_Pt.1.ogg',
   },
 ]
 
@@ -61,6 +63,20 @@ const applyDynamicBackground = (enabled: boolean) => {
   document.documentElement.setAttribute('data-bg-motion', enabled ? 'on' : 'off')
   localStorage.setItem('zrymax-bg-motion', enabled ? 'on' : 'off')
 }
+
+const mapWeatherCodeToScene = (code: number): WeatherScene => {
+  if (code === 45 || code === 48) return 'fog'
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain'
+  if (code >= 71 && code <= 77) return 'snow'
+  if (code >= 95) return 'storm'
+  if (code >= 1 && code <= 3) return 'cloudy'
+  return 'clear'
+}
+
+const isNight = computed(() => {
+  const hour = new Date().getHours()
+  return theme.value === 'dark' || hour < 6 || hour >= 18
+})
 
 onMounted(() => {
   const cache = localStorage.getItem('zrymax-theme')
@@ -80,6 +96,14 @@ onMounted(() => {
   if (trackCache && musicTracks.some((track) => track.id === trackCache)) {
     activeTrackId.value = trackCache
   }
+
+  fetchWeather(30.2741, 120.1551)
+    .then((weather) => {
+      weatherScene.value = mapWeatherCodeToScene(weather.current.weather_code)
+    })
+    .catch((error) => {
+      console.warn('获取动态天气场景失败，使用默认场景。', error)
+    })
 })
 
 watch(theme, (mode) => {
@@ -119,33 +143,67 @@ const playCurrentTrack = async () => {
   }
 }
 
-const pauseCurrentTrack = () => {
-  audioRef.value?.pause()
+const togglePlayPause = () => {
+  const player = audioRef.value
+  if (!player) return
+
+  if (!player.paused) {
+    player.pause()
+    return
+  }
+  void playCurrentTrack()
 }
 
 const selectTrack = async (trackId: string) => {
   activeTrackId.value = trackId
   await nextTick()
+  audioRef.value?.load()
   void playCurrentTrack()
 }
 </script>
 
 <template>
   <div :class="['app-shell', { 'dynamic-bg': dynamicBackground }]">
-    <div :class="['aurora-bg', { dynamic: dynamicBackground }]" aria-hidden="true">
-      <span class="blob blob-a"></span>
-      <span class="blob blob-b"></span>
-      <span class="blob blob-c"></span>
-      <span class="flow-light flow-a"></span>
-      <span class="flow-light flow-b"></span>
-      <span class="flow-light flow-c"></span>
-      <span class="motion-grid"></span>
+    <div
+      :class="[
+        'aurora-bg',
+        {
+          dynamic: dynamicBackground,
+          'scene-day': !isNight,
+          'scene-night': isNight,
+          'scene-clear': weatherScene === 'clear',
+          'scene-cloudy': weatherScene === 'cloudy',
+          'scene-rain': weatherScene === 'rain',
+          'scene-snow': weatherScene === 'snow',
+          'scene-fog': weatherScene === 'fog',
+          'scene-storm': weatherScene === 'storm',
+        },
+      ]"
+      aria-hidden="true"
+    >
+      <span class="weather-halo"></span>
+      <span class="weather-vignette"></span>
+      <span class="weather-sun"></span>
+      <div class="weather-cloud-layer layer-back">
+        <span class="weather-cloud cloud-a"></span>
+        <span class="weather-cloud cloud-b"></span>
+        <span class="weather-cloud cloud-c"></span>
+      </div>
+      <div class="weather-cloud-layer layer-front">
+        <span class="weather-cloud cloud-d"></span>
+        <span class="weather-cloud cloud-e"></span>
+      </div>
+      <span class="weather-rain"></span>
+      <span class="weather-snow"></span>
+      <span class="weather-fog"></span>
+      <span class="weather-lightning"></span>
+      <span class="weather-grain"></span>
     </div>
 
     <header class="top-nav glass-card">
       <RouterLink class="brand" to="/">
         <span class="brand-badge">
-          <img class="brand-logo" :src="siteLogo" alt="zrymax logo" />
+          <span class="brand-monogram">ZRY</span>
         </span>
         <span class="brand-name">zrymax</span>
       </RouterLink>
@@ -202,11 +260,8 @@ const selectTrack = async (trackId: string) => {
           </button>
         </div>
         <div class="music-actions">
-          <button type="button" class="music-control-btn" @click="playCurrentTrack">
-            ▶️ 播放
-          </button>
-          <button type="button" class="music-control-btn" @click="pauseCurrentTrack">
-            ⏸️ 暂停
+          <button type="button" class="music-control-btn" @click="togglePlayPause">
+            {{ isPlaying ? '⏸️ 暂停播放' : '▶️ 开始播放' }}
           </button>
         </div>
         <p class="music-now-playing">
@@ -216,12 +271,12 @@ const selectTrack = async (trackId: string) => {
     </div>
     <audio
       ref="audioRef"
-      :key="activeTrackId"
       class="bg-audio-player"
       :src="activeTrack.url"
       preload="metadata"
       @play="isPlaying = true"
       @pause="isPlaying = false"
+      @ended="isPlaying = false"
     />
   </div>
 </template>
