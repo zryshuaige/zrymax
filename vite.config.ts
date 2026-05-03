@@ -3,6 +3,9 @@ import vue from '@vitejs/plugin-vue'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: './',
+  base: '/zrymax/',
   plugins: [vue()],
+  build: {
+    outDir: 'docs'
+  }
 })
