@@ -44,8 +44,12 @@ export interface ApiEntry {
 }
 
 export interface AchievementItem {
+  id: string
   title: string
+  subtitle: string
   icon: string
+  theme: 'academic' | 'modeling' | 'competition' | 'innovation'
+  detailFile: string
 }
 
 export const personalProfile = {
@@ -61,8 +65,8 @@ export const personalProfile = {
 
 export const heroStats: HeroStat[] = [
   { label: '上线页面', value: '20+' },
-  { label: '常用工具', value: '60+' },
-  { label: '沉淀年限', value: '5y' },
+  { label: '实习经历', value: '1ing' },
+  { label: '科研论文', value: '1+1ing' },
 ]
 
 export const skillTags: string[] = [
@@ -234,19 +238,35 @@ export const apiCatalog: ApiEntry[] = [
 
 export const personalAchievements: AchievementItem[] = [
   {
+    id: 'journal-paper',
     title: '《控制与决策》期刊一篇(北核/CSCD/EI)',
+    subtitle: '学术科研成果',
     icon: '📘',
+    theme: 'academic',
+    detailFile: '/achievements/journal-paper.md',
   },
   {
+    id: 'mcm-award',
     title: '美国数学建模大赛获奖',
+    subtitle: '国际建模实践',
     icon: '🏆',
+    theme: 'modeling',
+    detailFile: '/achievements/mcm-award.md',
   },
   {
+    id: 'lanqiao-prize',
     title: '蓝桥杯省赛三等奖',
+    subtitle: '算法竞赛经历',
     icon: '🥉',
+    theme: 'competition',
+    detailFile: '/achievements/lanqiao-prize.md',
   },
   {
+    id: 'innovation-project',
     title: '国家级创新创业大赛项目队员',
+    subtitle: '创新创业项目',
     icon: '🚀',
+    theme: 'innovation',
+    detailFile: '/achievements/innovation-project.md',
   },
 ]

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { featuredProjects, heroStats, personalHighlights, personalProfile } from '../data/siteData'
 import { fetchHitokoto, fetchWeather, weatherCodeToText } from '../services/apis'
 import { getCardColorStyle } from '../utils/cardPalette'
+import siteLogo from '../assets/logo.png'
 
 const quoteText = ref('正在加载今日一句...')
 const quoteSource = ref('Hitokoto')
@@ -49,8 +50,8 @@ onMounted(async () => {
   <section class="page home-view">
     <div class="hero-grid">
       <article class="glass-card profile-card">
-        <div class="avatar-ring" aria-label="ZR logo">
-          <span class="hero-wordmark">ZR</span>
+        <div class="avatar-ring" aria-label="ZRY logo">
+          <img class="hero-logo" :src="siteLogo" alt="zry logo" />
         </div>
         <p class="greeting">{{ greeting }}</p>
         <h1>{{ personalProfile.name }}</h1>
@@ -58,8 +59,8 @@ onMounted(async () => {
 
         <div class="action-row">
           <RouterLink to="/navigator" class="btn primary">进入导航页</RouterLink>
-          <a class="btn ghost" :href="personalProfile.blog" target="_blank" rel="noreferrer">访问主站</a>
-          <a class="btn ghost" :href="personalProfile.github" target="_blank" rel="noreferrer">GitHub</a>
+          <a class="btn blog-btn" :href="personalProfile.blog" target="_blank" rel="noreferrer">访问主站</a>
+          <a class="btn github-btn" :href="personalProfile.github" target="_blank" rel="noreferrer">GitHub</a>
         </div>
 
         <ul class="meta-list">
