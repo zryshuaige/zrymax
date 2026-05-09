@@ -4,14 +4,14 @@
 
 ## 比赛信息
 - 赛事：MCM/ICM
-- 奖项：
-- 年份：
-- 队伍人数：
+- 奖项：Meritorious Winner(M奖，一等奖)
+- 年份：2026
+- 队伍人数：3
 
 ## 题目与方法
-- 题目方向：
-- 建模方法：
-- 求解工具：
+- 题目方向：A Universal passive Shading Strategy 
+- 建模方法：动力学模型(SD)+多目标优化模型(NSGA-II)+深度学习(ARMIA+LSTM)
+- 求解工具：python & AI
 
 ## 我的职责
 - 方案设计与模型搭建
