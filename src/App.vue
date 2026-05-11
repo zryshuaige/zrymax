@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
+import CornerBadge from './components/CornerBadge.vue'
+import backVideo from './assets/back.mp4'
 import { fetchWeather } from './services/apis'
 
 type ThemeMode = 'light' | 'dark'
@@ -30,6 +32,7 @@ const dynamicBackground = ref(true)
 const showMusicPopup = ref(false)
 const activeTrackId = ref('fur-elise')
 const audioRef = ref<HTMLAudioElement | null>(null)
+const bgVideoRef = ref<HTMLVideoElement | null>(null)
 const isPlaying = ref(false)
 const weatherScene = ref<WeatherScene>('clear')
 
@@ -64,6 +67,22 @@ const applyDynamicBackground = (enabled: boolean) => {
   localStorage.setItem('zrymax-bg-motion', enabled ? 'on' : 'off')
 }
 
+const syncBackgroundVideo = async (enabled: boolean) => {
+  const video = bgVideoRef.value
+  if (!video) return
+
+  if (!enabled) {
+    video.pause()
+    return
+  }
+
+  try {
+    await video.play()
+  } catch (error) {
+    console.warn('背景视频自动播放失败，请检查浏览器自动播放设置。', error)
+  }
+}
+
 const mapWeatherCodeToScene = (code: number): WeatherScene => {
   if (code === 45 || code === 48) return 'fog'
   if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain'
@@ -91,6 +110,7 @@ onMounted(() => {
   const bgMotionCache = localStorage.getItem('zrymax-bg-motion')
   dynamicBackground.value = bgMotionCache !== 'off'
   applyDynamicBackground(dynamicBackground.value)
+  void syncBackgroundVideo(dynamicBackground.value)
 
   const trackCache = localStorage.getItem('zrymax-track-id')
   if (trackCache && musicTracks.some((track) => track.id === trackCache)) {
@@ -112,6 +132,7 @@ watch(theme, (mode) => {
 
 watch(dynamicBackground, (enabled) => {
   applyDynamicBackground(enabled)
+  void syncBackgroundVideo(enabled)
 })
 
 watch(activeTrackId, (trackId) => {
@@ -164,6 +185,18 @@ const selectTrack = async (trackId: string) => {
 
 <template>
   <div :class="['app-shell', { 'dynamic-bg': dynamicBackground }]">
+    <video
+      ref="bgVideoRef"
+      class="bg-video"
+      :src="backVideo"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="auto"
+      aria-hidden="true"
+    ></video>
+    <div class="video-scrim" aria-hidden="true"></div>
     <div
       :class="[
         'aurora-bg',
@@ -184,15 +217,6 @@ const selectTrack = async (trackId: string) => {
       <span class="weather-halo"></span>
       <span class="weather-vignette"></span>
       <span class="weather-sun"></span>
-      <div class="weather-cloud-layer layer-back">
-        <span class="weather-cloud cloud-a"></span>
-        <span class="weather-cloud cloud-b"></span>
-        <span class="weather-cloud cloud-c"></span>
-      </div>
-      <div class="weather-cloud-layer layer-front">
-        <span class="weather-cloud cloud-d"></span>
-        <span class="weather-cloud cloud-e"></span>
-      </div>
       <span class="weather-rain"></span>
       <span class="weather-snow"></span>
       <span class="weather-fog"></span>
@@ -239,6 +263,8 @@ const selectTrack = async (trackId: string) => {
     <footer class="site-footer">
       <p>© {{ new Date().getFullYear() }} zrymax · Vue3 Personal Navigator</p>
     </footer>
+
+    <CornerBadge />
 
     <div v-if="showMusicPopup" class="music-mask" @click.self="showMusicPopup = false">
       <section class="music-popup glass-card">
