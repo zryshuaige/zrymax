@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 import CornerBadge from './components/CornerBadge.vue'
 import { fetchWeather } from './services/apis'
@@ -32,9 +32,14 @@ const showMusicPopup = ref(false)
 const activeTrackId = ref('fur-elise')
 const audioRef = ref<HTMLAudioElement | null>(null)
 const bgVideoRef = ref<HTMLVideoElement | null>(null)
+const introVideoRef = ref<HTMLVideoElement | null>(null)
 const isPlaying = ref(false)
 const weatherScene = ref<WeatherScene>('clear')
 const backVideoUrl = 'https://back-1378632268.cos.ap-shanghai.myqcloud.com/back.mp4'
+const introVideoUrl = 'https://back-1378632268.cos.ap-shanghai.myqcloud.com/start.mp4'
+const introVisible = ref(true)
+const introReveal = ref(false)
+let hideTimer: number | null = null
 
 const musicTracks: MusicTrack[] = [
   {
@@ -83,6 +88,43 @@ const syncBackgroundVideo = async (enabled: boolean) => {
   }
 }
 
+const playIntroVideo = async () => {
+  const video = introVideoRef.value
+  if (!video) return
+
+  try {
+    await video.play()
+  } catch (error) {
+    console.warn('开场视频自动播放失败。', error)
+  }
+}
+
+const clearIntroTimers = () => {
+  if (hideTimer !== null) {
+    window.clearTimeout(hideTimer)
+    hideTimer = null
+  }
+}
+
+const finishIntro = () => {
+  introReveal.value = true
+  hideTimer = window.setTimeout(() => {
+    introVisible.value = false
+  }, 1200)
+}
+
+const handleIntroEnded = () => {
+  introVideoRef.value?.pause()
+  finishIntro()
+}
+
+const skipIntro = () => {
+  introReveal.value = true
+  introVisible.value = false
+  clearIntroTimers()
+  introVideoRef.value?.pause()
+}
+
 const mapWeatherCodeToScene = (code: number): WeatherScene => {
   if (code === 45 || code === 48) return 'fog'
   if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain'
@@ -110,7 +152,9 @@ onMounted(() => {
   const bgMotionCache = localStorage.getItem('zrymax-bg-motion')
   dynamicBackground.value = bgMotionCache !== 'off'
   applyDynamicBackground(dynamicBackground.value)
-  void syncBackgroundVideo(dynamicBackground.value)
+  if (!introVisible.value) {
+    void syncBackgroundVideo(dynamicBackground.value)
+  }
 
   const trackCache = localStorage.getItem('zrymax-track-id')
   if (trackCache && musicTracks.some((track) => track.id === trackCache)) {
@@ -124,6 +168,12 @@ onMounted(() => {
     .catch((error) => {
       console.warn('获取动态天气场景失败，使用默认场景。', error)
     })
+
+  void playIntroVideo()
+})
+
+onBeforeUnmount(() => {
+  clearIntroTimers()
 })
 
 watch(theme, (mode) => {
@@ -132,7 +182,19 @@ watch(theme, (mode) => {
 
 watch(dynamicBackground, (enabled) => {
   applyDynamicBackground(enabled)
-  void syncBackgroundVideo(enabled)
+  if (!introVisible.value) {
+    void syncBackgroundVideo(enabled)
+  } else {
+    bgVideoRef.value?.pause()
+  }
+})
+
+watch(introVisible, (visible) => {
+  if (visible) {
+    bgVideoRef.value?.pause()
+    return
+  }
+  void syncBackgroundVideo(dynamicBackground.value)
 })
 
 watch(activeTrackId, (trackId) => {
@@ -184,7 +246,31 @@ const selectTrack = async (trackId: string) => {
 </script>
 
 <template>
-  <div :class="['app-shell', { 'dynamic-bg': dynamicBackground }]">
+  <div
+    :class="[
+      'app-shell',
+      {
+        'dynamic-bg': dynamicBackground,
+        'intro-active': introVisible,
+        'intro-reveal': introReveal,
+      },
+    ]"
+  >
+    <div v-if="introVisible" class="intro-screen">
+      <video
+        ref="introVideoRef"
+        class="intro-video"
+        :src="introVideoUrl"
+        autoplay
+        muted
+        playsinline
+        preload="auto"
+        @ended="handleIntroEnded"
+      ></video>
+      <div class="intro-controls">
+        <button class="intro-skip" type="button" @click="skipIntro">跳过</button>
+      </div>
+    </div>
     <video
       ref="bgVideoRef"
       class="bg-video"
@@ -224,76 +310,78 @@ const selectTrack = async (trackId: string) => {
       <span class="weather-grain"></span>
     </div>
 
-    <header class="top-nav glass-card">
-      <RouterLink class="brand" to="/">
-        <span class="brand-badge">
-          <span class="brand-monogram">ZRY</span>
-        </span>
-        <span class="brand-name">zrymax</span>
-      </RouterLink>
-
-      <nav class="nav-links">
-        <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" class="nav-link">
-          <span>{{ item.emoji }}</span>
-          <span>{{ item.label }}</span>
+    <div class="app-content">
+      <header class="top-nav glass-card">
+        <RouterLink class="brand" to="/">
+          <span class="brand-badge">
+            <span class="brand-monogram">ZRY</span>
+          </span>
+          <span class="brand-name">zrymax</span>
         </RouterLink>
-      </nav>
 
-      <div class="toolbar-actions">
-        <button class="theme-btn" type="button" @click="toggleTheme">
-          {{ theme === 'light' ? '🌙 深色' : '☀️ 浅色' }}
-        </button>
-        <button class="theme-btn" type="button" @click="toggleBackgroundMotion">
-          {{ dynamicBackground ? '🫧 关闭动效' : '✨ 开启动效' }}
-        </button>
-        <button class="theme-btn" type="button" @click="toggleMusicPopup">
-          🎵 音乐
-        </button>
+        <nav class="nav-links">
+          <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" class="nav-link">
+            <span>{{ item.emoji }}</span>
+            <span>{{ item.label }}</span>
+          </RouterLink>
+        </nav>
+
+        <div class="toolbar-actions">
+          <button class="theme-btn" type="button" @click="toggleTheme">
+            {{ theme === 'light' ? '🌙 深色' : '☀️ 浅色' }}
+          </button>
+          <button class="theme-btn" type="button" @click="toggleBackgroundMotion">
+            {{ dynamicBackground ? '🫧 关闭动效' : '✨ 开启动效' }}
+          </button>
+          <button class="theme-btn" type="button" @click="toggleMusicPopup">
+            🎵 音乐
+          </button>
+        </div>
+      </header>
+
+      <main class="page-wrap">
+        <RouterView v-slot="{ Component }">
+          <Transition name="route-fade" mode="out-in">
+            <component :is="Component" />
+          </Transition>
+        </RouterView>
+      </main>
+
+      <footer class="site-footer">
+        <p>© {{ new Date().getFullYear() }} zrymax · Vue3 Personal Navigator</p>
+      </footer>
+
+      <CornerBadge />
+
+      <div v-if="showMusicPopup" class="music-mask" @click.self="showMusicPopup = false">
+        <section class="music-popup glass-card">
+          <div class="music-head">
+            <h3>🎶 音乐播放</h3>
+            <button type="button" class="music-close-btn" @click="showMusicPopup = false">关闭</button>
+          </div>
+          <p class="music-subtitle">选择一首背景音乐，边逛边听。</p>
+          <div class="music-list">
+            <button
+              v-for="track in musicTracks"
+              :key="track.id"
+              type="button"
+              :class="['music-item', { active: activeTrackId === track.id }]"
+              @click="selectTrack(track.id)"
+            >
+              <span class="music-item-name">{{ track.name }}</span>
+              <span class="music-item-artist">{{ track.artist }}</span>
+            </button>
+          </div>
+          <div class="music-actions">
+            <button type="button" class="music-control-btn" @click="togglePlayPause">
+              {{ isPlaying ? '⏸️ 暂停播放' : '▶️ 开始播放' }}
+            </button>
+          </div>
+          <p class="music-now-playing">
+            当前：{{ activeTrack.name }} · {{ activeTrack.artist }}（{{ isPlaying ? '播放中' : '已暂停' }}）
+          </p>
+        </section>
       </div>
-    </header>
-
-    <main class="page-wrap">
-      <RouterView v-slot="{ Component }">
-        <Transition name="route-fade" mode="out-in">
-          <component :is="Component" />
-        </Transition>
-      </RouterView>
-    </main>
-
-    <footer class="site-footer">
-      <p>© {{ new Date().getFullYear() }} zrymax · Vue3 Personal Navigator</p>
-    </footer>
-
-    <CornerBadge />
-
-    <div v-if="showMusicPopup" class="music-mask" @click.self="showMusicPopup = false">
-      <section class="music-popup glass-card">
-        <div class="music-head">
-          <h3>🎶 音乐播放</h3>
-          <button type="button" class="music-close-btn" @click="showMusicPopup = false">关闭</button>
-        </div>
-        <p class="music-subtitle">选择一首背景音乐，边逛边听。</p>
-        <div class="music-list">
-          <button
-            v-for="track in musicTracks"
-            :key="track.id"
-            type="button"
-            :class="['music-item', { active: activeTrackId === track.id }]"
-            @click="selectTrack(track.id)"
-          >
-            <span class="music-item-name">{{ track.name }}</span>
-            <span class="music-item-artist">{{ track.artist }}</span>
-          </button>
-        </div>
-        <div class="music-actions">
-          <button type="button" class="music-control-btn" @click="togglePlayPause">
-            {{ isPlaying ? '⏸️ 暂停播放' : '▶️ 开始播放' }}
-          </button>
-        </div>
-        <p class="music-now-playing">
-          当前：{{ activeTrack.name }} · {{ activeTrack.artist }}（{{ isPlaying ? '播放中' : '已暂停' }}）
-        </p>
-      </section>
     </div>
     <audio
       ref="audioRef"

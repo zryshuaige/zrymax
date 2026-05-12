@@ -97,6 +97,69 @@ a {
   isolation: isolate;
 }
 
+.app-content {
+  position: relative;
+  z-index: 4;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 1s ease, transform 1s ease;
+}
+
+.app-shell.intro-active .app-content {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+}
+
+.app-shell.intro-reveal .app-content {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.intro-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: #05070f;
+  display: grid;
+  place-items: center;
+}
+
+.app-shell.intro-reveal .intro-screen {
+  z-index: 2;
+  pointer-events: none;
+}
+
+.intro-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.intro-controls {
+  position: absolute;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 2;
+}
+
+.intro-skip {
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  background: rgba(10, 14, 28, 0.4);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+.intro-skip:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .bg-video {
   position: fixed;
   inset: 0;
@@ -477,7 +540,7 @@ a {
   width: min(1180px, 94vw);
   margin: 0 auto;
   position: relative;
-  z-index: 3;
+  z-index: 1;
 }
 
 .page {
@@ -489,7 +552,7 @@ a {
   width: min(1180px, 94vw);
   margin: 1.2rem auto 0;
   position: relative;
-  z-index: 3;
+  z-index: 1;
   text-align: center;
   color: var(--text-secondary);
   font-size: 0.86rem;
