@@ -2,7 +2,6 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
 import CornerBadge from './components/CornerBadge.vue'
-import backVideo from './assets/back.mp4'
 import { fetchWeather } from './services/apis'
 
 type ThemeMode = 'light' | 'dark'
@@ -35,6 +34,7 @@ const audioRef = ref<HTMLAudioElement | null>(null)
 const bgVideoRef = ref<HTMLVideoElement | null>(null)
 const isPlaying = ref(false)
 const weatherScene = ref<WeatherScene>('clear')
+const backVideoUrl = 'https://back-1378632268.cos.ap-shanghai.myqcloud.com/back.mp4'
 
 const musicTracks: MusicTrack[] = [
   {
@@ -188,7 +188,7 @@ const selectTrack = async (trackId: string) => {
     <video
       ref="bgVideoRef"
       class="bg-video"
-      :src="backVideo"
+      :src="backVideoUrl"
       autoplay
       muted
       loop

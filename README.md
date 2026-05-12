@@ -161,5 +161,3 @@ zrymax
 - Nginx 静态目录
 
 部署时只需要发布 `dist/` 目录。
-
-如果使用 GitHub Pages，建议直接启用仓库内的 GitHub Actions 发布流程，workflow 位于 [.github/workflows/deploy.yml](.github/workflows/deploy.yml)。同时在仓库的 Pages 设置里把 Source 选成 GitHub Actions，这样每次推送到 `main` 都会自动构建并发布最新的 `dist/`。

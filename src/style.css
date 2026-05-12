@@ -68,21 +68,21 @@ body {
 }
 
 :root[data-bg-motion='on'] {
-  --card-bg: rgba(255, 255, 255, 0.01);
-  --card-border: rgba(255, 255, 255, 0.04);
-  --nav-bg: rgba(255, 255, 255, 0.01);
-  --card-tint: rgba(136, 153, 255, 0.01);
-  --card-tint-soft: rgba(136, 153, 255, 0.005);
-  --card-border-tint: rgba(136, 153, 255, 0.03);
+  --card-bg: transparent;
+  --card-border: transparent;
+  --nav-bg: transparent;
+  --card-tint: transparent;
+  --card-tint-soft: transparent;
+  --card-border-tint: transparent;
 }
 
 :root[data-theme='dark'][data-bg-motion='on'] {
-  --card-bg: rgba(17, 29, 58, 0.01);
-  --card-border: rgba(152, 176, 247, 0.04);
-  --nav-bg: rgba(17, 30, 60, 0.01);
-  --card-tint: rgba(136, 153, 255, 0.01);
-  --card-tint-soft: rgba(136, 153, 255, 0.005);
-  --card-border-tint: rgba(136, 153, 255, 0.03);
+  --card-bg: transparent;
+  --card-border: transparent;
+  --nav-bg: transparent;
+  --card-tint: transparent;
+  --card-tint-soft: transparent;
+  --card-border-tint: transparent;
 }
 
 a {
@@ -352,8 +352,8 @@ a {
 }
 
 :root[data-bg-motion='on'] .glass-card {
-  backdrop-filter: blur(22px) saturate(145%);
-  box-shadow: 0 18px 38px rgba(42, 64, 122, 0.16);
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
 :root[data-bg-motion='on'] .glass-card,
@@ -785,8 +785,9 @@ a {
 :root[data-bg-motion='on'] .site-card,
 :root[data-bg-motion='on'] .project-item,
 :root[data-bg-motion='on'] .music-item {
-  background: rgba(136, 153, 255, 0.005) !important;
-  border-color: rgba(136, 153, 255, 0.03) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .btn:hover {
