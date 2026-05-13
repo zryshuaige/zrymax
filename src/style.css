@@ -117,6 +117,26 @@ a {
   pointer-events: auto;
 }
 
+.app-shell.intro-reveal .top-nav {
+  animation: content-fade-up 0.85s ease both;
+  animation-delay: 0.05s;
+}
+
+.app-shell.intro-reveal .page-wrap {
+  animation: content-fade-up 0.95s ease both;
+  animation-delay: 0.12s;
+}
+
+.app-shell.intro-reveal .site-footer {
+  animation: content-fade-up 0.95s ease both;
+  animation-delay: 0.2s;
+}
+
+.app-shell.intro-reveal .corner-badge {
+  animation: content-fade-up 1s ease both;
+  animation-delay: 0.28s;
+}
+
 .intro-screen {
   position: fixed;
   inset: 0;
@@ -171,7 +191,7 @@ a {
   opacity: 0;
   transition: opacity 0.6s ease;
   pointer-events: none;
-  filter: saturate(1.05) brightness(0.78);
+  filter: saturate(1.05) brightness(0.9);
 }
 
 .video-scrim {
@@ -437,6 +457,19 @@ a {
   background: var(--nav-bg);
 }
 
+:root[data-bg-motion='on'] .top-nav {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 14px 32px rgba(20, 30, 60, 0.18);
+  backdrop-filter: blur(10px);
+}
+
+:root[data-theme='dark'][data-bg-motion='on'] .top-nav {
+  background: rgba(12, 18, 36, 0.72);
+  border-color: rgba(120, 140, 220, 0.26);
+  box-shadow: 0 16px 36px rgba(6, 10, 24, 0.46);
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -542,6 +575,10 @@ a {
 .page {
   margin-top: 1rem;
   animation: move-up 0.55s ease;
+}
+
+:root[data-bg-motion='on'] .page {
+  animation: none;
 }
 
 .site-footer {
@@ -847,6 +884,27 @@ a {
   background: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
+}
+
+:root[data-bg-motion='on'] .achievement-modal-mask {
+  background: rgba(7, 12, 28, 0.48);
+}
+
+:root[data-bg-motion='on'] .achievement-modal {
+  background: rgba(12, 18, 36, 0.6);
+  border-color: rgba(120, 140, 220, 0.25);
+  box-shadow: 0 22px 50px rgba(8, 12, 28, 0.45);
+  backdrop-filter: blur(10px);
+}
+
+:root[data-bg-motion='on'] .achievement-modal-content {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(160, 176, 245, 0.28) !important;
+}
+
+:root[data-theme='dark'][data-bg-motion='on'] .achievement-modal-content {
+  background: rgba(12, 18, 36, 0.82) !important;
+  border-color: rgba(120, 140, 220, 0.3) !important;
 }
 
 .btn:hover {
@@ -1374,6 +1432,7 @@ a {
 .profile-view {
   display: grid;
   gap: 1rem;
+  padding-top: clamp(1.5rem, 6vh, 3.5rem);
 }
 
 .profile-intro-card,
@@ -1459,8 +1518,8 @@ a {
   background: rgba(10, 16, 30, 0.34);
   backdrop-filter: blur(8px);
   display: grid;
-  place-items: center;
-  padding: 1rem;
+  place-items: start center;
+  padding: clamp(2.8rem, 12vh, 7rem) 1rem 1.2rem;
 }
 
 .achievement-modal {
@@ -1622,6 +1681,17 @@ a {
   transform: translateY(12px);
 }
 
+:root[data-bg-motion='on'] .route-fade-enter-active,
+:root[data-bg-motion='on'] .route-fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+:root[data-bg-motion='on'] .route-fade-enter-from,
+:root[data-bg-motion='on'] .route-fade-leave-to {
+  opacity: 0;
+  transform: none;
+}
+
 @keyframes float {
   0%,
   100% {
@@ -1636,6 +1706,17 @@ a {
   from {
     opacity: 0;
     transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes content-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
