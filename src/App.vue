@@ -35,7 +35,9 @@ const bgVideoRef = ref<HTMLVideoElement | null>(null)
 const introVideoRef = ref<HTMLVideoElement | null>(null)
 const isPlaying = ref(false)
 const weatherScene = ref<WeatherScene>('clear')
-const backVideoUrl = 'https://back-1378632268.cos.ap-shanghai.myqcloud.com/back.mp4'
+const backSunUrl = 'https://back-1378632268.cos.ap-shanghai.myqcloud.com/back_sun.mp4'
+const backRainUrl = 'https://back-1378632268.cos.ap-shanghai.myqcloud.com/back_rain.mp4'
+const backVideoUrl = ref(backSunUrl)
 const introVideoUrl = 'https://back-1378632268.cos.ap-shanghai.myqcloud.com/start.mp4'
 const introVisible = ref(true)
 const introReveal = ref(false)
@@ -134,6 +136,9 @@ const mapWeatherCodeToScene = (code: number): WeatherScene => {
   return 'clear'
 }
 
+const resolveBackgroundVideo = (scene: WeatherScene) =>
+  scene === 'rain' || scene === 'storm' ? backRainUrl : backSunUrl
+
 const isNight = computed(() => {
   const hour = new Date().getHours()
   return theme.value === 'dark' || hour < 6 || hour >= 18
@@ -163,7 +168,9 @@ onMounted(() => {
 
   fetchWeather(30.2741, 120.1551)
     .then((weather) => {
-      weatherScene.value = mapWeatherCodeToScene(weather.current.weather_code)
+      const scene = mapWeatherCodeToScene(weather.current.weather_code)
+      weatherScene.value = scene
+      backVideoUrl.value = resolveBackgroundVideo(scene)
     })
     .catch((error) => {
       console.warn('获取动态天气场景失败，使用默认场景。', error)
@@ -196,6 +203,21 @@ watch(introVisible, (visible) => {
   }
   void syncBackgroundVideo(dynamicBackground.value)
 })
+
+watch(
+  backVideoUrl,
+  () => {
+    const video = bgVideoRef.value
+    if (!video) return
+    video.load()
+    if (introVisible.value || !dynamicBackground.value) {
+      video.pause()
+      return
+    }
+    void syncBackgroundVideo(true)
+  },
+  { immediate: true }
+)
 
 watch(activeTrackId, (trackId) => {
   localStorage.setItem('zrymax-track-id', trackId)
