@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useHead } from '@unhead/vue'
 import { navSections, searchEngines } from '../data/siteData'
 import { getCardColorStyle } from '../utils/cardPalette'
+import { vReveal, vMagnetic } from '../directives'
+
+useHead({ title: '导航' })
 
 const keyword = ref('')
 const activeEngineId = ref(searchEngines[0].id)
@@ -103,7 +107,7 @@ const scrollToSection = (sectionId: string) => {
 
 <template>
   <section class="page navigator-view">
-    <article class="glass-card search-panel">
+    <article v-reveal class="glass-card search-panel">
       <h2>聚合搜索中心</h2>
       <p>继承 websites 的搜索聚合思路，支持多搜索引擎一键切换。</p>
 
@@ -135,7 +139,7 @@ const scrollToSection = (sectionId: string) => {
           :placeholder="activeEngine.placeholder"
           @keyup.enter="performSearch"
         />
-        <button type="button" @click="performSearch">立即搜索</button>
+        <button type="button" v-magnetic @click="performSearch">立即搜索</button>
       </div>
 
       <div class="category-tabs">
@@ -163,7 +167,7 @@ const scrollToSection = (sectionId: string) => {
           <p class="section-desc">{{ section.description }}</p>
         </header>
 
-        <div class="link-grid">
+        <div v-reveal="{ stagger: 0.04 }" class="link-grid">
           <article
             v-for="(site, index) in section.links"
             :key="site.name"

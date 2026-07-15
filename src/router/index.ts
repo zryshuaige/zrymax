@@ -1,8 +1,4 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
-import NavigatorView from '../views/NavigatorView.vue'
-import AboutView from '../views/AboutView.vue'
-import ProfileView from '../views/ProfileView.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -10,22 +6,27 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView,
+      component: () => import('../views/HomeView.vue'),
     },
     {
       path: '/navigator',
       name: 'navigator',
-      component: NavigatorView,
-    },
-    {
-      path: '/about',
-      name: 'about',
-      component: AboutView,
+      component: () => import('../views/NavigatorView.vue'),
     },
     {
       path: '/profile',
       name: 'profile',
-      component: ProfileView,
+      component: () => import('../views/ProfileView.vue'),
+    },
+    {
+      path: '/xai',
+      name: 'xai',
+      component: () => import('../views/XaiView.vue'),
+    },
+    {
+      path: '/about',
+      name: 'about',
+      component: () => import('../views/AboutView.vue'),
     },
   ],
 })

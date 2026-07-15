@@ -1,0 +1,167 @@
+/* ===== 字体（Google Fonts CDN）===== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ===== 字体族 token ===== */
+:root {
+  --font-sans: 'Inter', 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', 'PingFang SC', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, .brand-name, .profile-card h1, .research-head h1, .now-head h1, .about-intro h1, .skills-title, .projects-title {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+code, pre, .mono {
+  font-family: var(--font-mono);
+}
+
+/* ===== 统一按钮系统（5 变体）===== */
+.btn {
+  --btn-bg: transparent;
+  --btn-fg: var(--text-primary);
+  --btn-bd: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid var(--btn-bd);
+  border-radius: 12px;
+  padding: 0.62rem 1.05rem;
+  font-family: var(--font-sans);
+  font-size: 0.94rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--btn-fg);
+  background: var(--btn-bg);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    transform var(--dur-1) var(--ease-out-cubic),
+    box-shadow var(--dur-1) var(--ease-out-cubic),
+    background var(--dur-1) var(--ease-out-cubic),
+    border-color var(--dur-1) var(--ease-out-cubic);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(30, 64, 124, 0.22);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+/* primary：实色填充 */
+.btn.primary,
+.btn-primary {
+  --btn-bg: linear-gradient(132deg, var(--accent), var(--accent-strong));
+  --btn-fg: #ffffff;
+  box-shadow: 0 10px 22px rgba(47, 109, 186, 0.32);
+}
+
+/* outline：描边 */
+.btn-outline {
+  --btn-bd: var(--accent);
+  --btn-fg: var(--accent-strong);
+  background: transparent;
+}
+
+:root[data-theme='dark'] .btn-outline {
+  --btn-fg: var(--accent);
+}
+
+.btn-outline:hover {
+  --btn-bg: rgba(47, 109, 186, 0.08);
+}
+
+/* ghost：浅蓝底深字 */
+.btn.ghost,
+.btn-ghost {
+  --btn-bg: rgba(47, 109, 186, 0.12);
+  --btn-fg: var(--text-primary);
+  --btn-bd: rgba(47, 109, 186, 0.22);
+}
+
+:root[data-theme='dark'] .btn-ghost {
+  --btn-bg: rgba(111, 168, 232, 0.14);
+  --btn-bd: rgba(111, 168, 232, 0.3);
+}
+
+.btn.ghost:hover,
+.btn-ghost:hover {
+  --btn-bg: rgba(47, 109, 186, 0.2);
+}
+
+/* icon：圆形 */
+.btn-icon {
+  --btn-bg: rgba(47, 109, 186, 0.12);
+  --btn-bd: rgba(47, 109, 186, 0.22);
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+/* 兼容现有 .theme-btn / .music-control-btn：确保始终可见 */
+.theme-btn {
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  backdrop-filter: blur(10px);
+}
+
+.theme-btn:hover {
+  background: rgba(47, 109, 186, 0.14);
+  border-color: var(--accent);
+}
+
+.music-control-btn {
+  background: linear-gradient(125deg, var(--accent), var(--accent-strong));
+}
+
+/* ===== 焦点环（a11y）===== */
+.btn:focus-visible,
+.theme-btn:focus-visible,
+.nav-link:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ===== 卡片实色兜底：即使动效开也保持可读 ===== */
+.glass-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow);
+}
+
+/* 开屏期间禁止滚动 */
+html.intro-lock,
+html.intro-lock body {
+  overflow: hidden;
+}
+
+html.intro-lock {
+  background: var(--bg-primary);
+}
+
+/* 粒子光标接管时隐藏原生光标：用通配符 + !important 压住所有元素自身的 cursor:pointer，
+   避免导航/按钮上原生箭头重新冒头导致双光标错位。输入框保留 text 光标。 */
+html.cursor-hidden,
+html.cursor-hidden * {
+  cursor: none !important;
+}
+
+html.cursor-hidden input,
+html.cursor-hidden textarea {
+  cursor: text !important;
+}

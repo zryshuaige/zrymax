@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
+import { useHead } from '@unhead/vue'
 import CornerBadge from './components/CornerBadge.vue'
+import IntroOverlay from './components/IntroOverlay.vue'
+import ParticleCursor from './components/ParticleCursor.vue'
 import { fetchWeather } from './services/apis'
+import { useLenis } from './composables/useLenis'
+import { setDayNight, setWeatherScene, mapWeatherCodeToScene } from './composables/useWeatherState'
+import { vMagnetic } from './directives'
 
 type ThemeMode = 'light' | 'dark'
-type WeatherScene = 'clear' | 'cloudy' | 'rain' | 'snow' | 'fog' | 'storm'
 type MusicTrack = {
   id: string
   name: string
@@ -19,29 +24,39 @@ interface NavItem {
   emoji: string
 }
 
+// 动态背景懒加载：canvas 流场，零外部依赖、天然循环、色调随天气联动。
+const VideoBackground = defineAsyncComponent(() => import('./components/VideoBackground.vue'))
+
 const navItems: NavItem[] = [
   { to: '/', label: '主页', emoji: '🏠' },
   { to: '/navigator', label: '导航', emoji: '🧭' },
   { to: '/profile', label: '简介', emoji: '👤' },
+  { to: '/xai', label: 'XAI', emoji: '🧬' },
   { to: '/about', label: '关于', emoji: '✨' },
 ]
+
+useLenis()
+
+useHead({
+  titleTemplate: (title) => (title ? `${title} · zrymax` : 'zrymax · 个人主页'),
+  htmlAttrs: { lang: 'zh-CN' },
+  meta: [
+    { name: 'description', content: 'zry 的个人主页 -- Vue3 + GSAP + WebGL 驱动的导航与作品集' },
+    { name: 'theme-color', content: '#5a67ff' },
+    { property: 'og:title', content: 'zrymax · 个人主页' },
+    { property: 'og:description', content: 'Vue3 + GSAP + WebGL 驱动的个人导航与作品集站点' },
+    { property: 'og:type', content: 'website' },
+  ],
+})
 
 const theme = ref<ThemeMode>('light')
 const dynamicBackground = ref(true)
 const showMusicPopup = ref(false)
 const activeTrackId = ref('fur-elise')
 const audioRef = ref<HTMLAudioElement | null>(null)
-const bgVideoRef = ref<HTMLVideoElement | null>(null)
-const introVideoRef = ref<HTMLVideoElement | null>(null)
 const isPlaying = ref(false)
-const weatherScene = ref<WeatherScene>('clear')
-const backSunUrl = 'https://back-1378632268.cos.ap-shanghai.myqcloud.com/back_sun.mp4'
-const backRainUrl = 'https://back-1378632268.cos.ap-shanghai.myqcloud.com/back_rain.mp4'
-const backVideoUrl = ref(backSunUrl)
-const introVideoUrl = 'https://back-1378632268.cos.ap-shanghai.myqcloud.com/start.mp4'
+const bgReady = ref(false)
 const introVisible = ref(true)
-const introReveal = ref(false)
-let hideTimer: number | null = null
 
 const musicTracks: MusicTrack[] = [
   {
@@ -74,75 +89,19 @@ const applyDynamicBackground = (enabled: boolean) => {
   localStorage.setItem('zrymax-bg-motion', enabled ? 'on' : 'off')
 }
 
-const syncBackgroundVideo = async (enabled: boolean) => {
-  const video = bgVideoRef.value
-  if (!video) return
-
-  if (!enabled) {
-    video.pause()
-    return
-  }
-
-  try {
-    await video.play()
-  } catch (error) {
-    console.warn('背景视频自动播放失败，请检查浏览器自动播放设置。', error)
-  }
-}
-
-const playIntroVideo = async () => {
-  const video = introVideoRef.value
-  if (!video) return
-
-  try {
-    await video.play()
-  } catch (error) {
-    console.warn('开场视频自动播放失败。', error)
-  }
-}
-
-const clearIntroTimers = () => {
-  if (hideTimer !== null) {
-    window.clearTimeout(hideTimer)
-    hideTimer = null
-  }
-}
-
-const finishIntro = () => {
-  introReveal.value = true
-  hideTimer = window.setTimeout(() => {
-    introVisible.value = false
-  }, 1200)
-}
-
-const handleIntroEnded = () => {
-  introVideoRef.value?.pause()
-  finishIntro()
-}
-
-const skipIntro = () => {
-  introReveal.value = true
-  introVisible.value = false
-  clearIntroTimers()
-  introVideoRef.value?.pause()
-}
-
-const mapWeatherCodeToScene = (code: number): WeatherScene => {
-  if (code === 45 || code === 48) return 'fog'
-  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain'
-  if (code >= 71 && code <= 77) return 'snow'
-  if (code >= 95) return 'storm'
-  if (code >= 1 && code <= 3) return 'cloudy'
-  return 'clear'
-}
-
-const resolveBackgroundVideo = (scene: WeatherScene) =>
-  scene === 'rain' || scene === 'storm' ? backRainUrl : backSunUrl
-
 const isNight = computed(() => {
   const hour = new Date().getHours()
   return theme.value === 'dark' || hour < 6 || hour >= 18
 })
+
+// 同步日夜状态到共享 store，供着色器背景读取。
+watch(
+  isNight,
+  (night) => {
+    setDayNight(night ? 1 : 0)
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   const cache = localStorage.getItem('zrymax-theme')
@@ -157,9 +116,6 @@ onMounted(() => {
   const bgMotionCache = localStorage.getItem('zrymax-bg-motion')
   dynamicBackground.value = bgMotionCache !== 'off'
   applyDynamicBackground(dynamicBackground.value)
-  if (!introVisible.value) {
-    void syncBackgroundVideo(dynamicBackground.value)
-  }
 
   const trackCache = localStorage.getItem('zrymax-track-id')
   if (trackCache && musicTracks.some((track) => track.id === trackCache)) {
@@ -168,19 +124,11 @@ onMounted(() => {
 
   fetchWeather(30.2741, 120.1551)
     .then((weather) => {
-      const scene = mapWeatherCodeToScene(weather.current.weather_code)
-      weatherScene.value = scene
-      backVideoUrl.value = resolveBackgroundVideo(scene)
+      setWeatherScene(mapWeatherCodeToScene(weather.current.weather_code))
     })
     .catch((error) => {
       console.warn('获取动态天气场景失败，使用默认场景。', error)
     })
-
-  void playIntroVideo()
-})
-
-onBeforeUnmount(() => {
-  clearIntroTimers()
 })
 
 watch(theme, (mode) => {
@@ -189,35 +137,7 @@ watch(theme, (mode) => {
 
 watch(dynamicBackground, (enabled) => {
   applyDynamicBackground(enabled)
-  if (!introVisible.value) {
-    void syncBackgroundVideo(enabled)
-  } else {
-    bgVideoRef.value?.pause()
-  }
 })
-
-watch(introVisible, (visible) => {
-  if (visible) {
-    bgVideoRef.value?.pause()
-    return
-  }
-  void syncBackgroundVideo(dynamicBackground.value)
-})
-
-watch(
-  backVideoUrl,
-  () => {
-    const video = bgVideoRef.value
-    if (!video) return
-    video.load()
-    if (introVisible.value || !dynamicBackground.value) {
-      video.pause()
-      return
-    }
-    void syncBackgroundVideo(true)
-  },
-  { immediate: true }
-)
 
 watch(activeTrackId, (trackId) => {
   localStorage.setItem('zrymax-track-id', trackId)
@@ -268,69 +188,12 @@ const selectTrack = async (trackId: string) => {
 </script>
 
 <template>
-  <div
-    :class="[
-      'app-shell',
-      {
-        'dynamic-bg': dynamicBackground,
-        'intro-active': introVisible,
-        'intro-reveal': introReveal,
-      },
-    ]"
-  >
-    <div v-if="introVisible" class="intro-screen">
-      <video
-        ref="introVideoRef"
-        class="intro-video"
-        :src="introVideoUrl"
-        autoplay
-        muted
-        playsinline
-        preload="auto"
-        @ended="handleIntroEnded"
-      ></video>
-      <div class="intro-controls">
-        <button class="intro-skip" type="button" @click="skipIntro">跳过</button>
-      </div>
-    </div>
-    <video
-      ref="bgVideoRef"
-      class="bg-video"
-      :src="backVideoUrl"
-      autoplay
-      muted
-      loop
-      playsinline
-      preload="auto"
-      aria-hidden="true"
-    ></video>
-    <div class="video-scrim" aria-hidden="true"></div>
-    <div
-      :class="[
-        'aurora-bg',
-        {
-          dynamic: dynamicBackground,
-          'scene-day': !isNight,
-          'scene-night': isNight,
-          'scene-clear': weatherScene === 'clear',
-          'scene-cloudy': weatherScene === 'cloudy',
-          'scene-rain': weatherScene === 'rain',
-          'scene-snow': weatherScene === 'snow',
-          'scene-fog': weatherScene === 'fog',
-          'scene-storm': weatherScene === 'storm',
-        },
-      ]"
-      aria-hidden="true"
-    >
-      <span class="weather-halo"></span>
-      <span class="weather-vignette"></span>
-      <span class="weather-sun"></span>
-      <span class="weather-rain"></span>
-      <span class="weather-snow"></span>
-      <span class="weather-fog"></span>
-      <span class="weather-lightning"></span>
-      <span class="weather-grain"></span>
-    </div>
+  <div :class="['app-shell', { 'dynamic-bg': dynamicBackground }]">
+    <IntroOverlay v-if="introVisible" @done="introVisible = false" />
+    <!-- CSS 兜底背景：着色器加载前/失败/低端机始终可见 -->
+    <div class="css-bg" aria-hidden="true"></div>
+    <!-- 动态背景（天气联动），懒加载 -->
+    <VideoBackground v-if="dynamicBackground" @vue:loaded="bgReady = true" />
 
     <div class="app-content">
       <header class="top-nav glass-card">
@@ -349,13 +212,13 @@ const selectTrack = async (trackId: string) => {
         </nav>
 
         <div class="toolbar-actions">
-          <button class="theme-btn" type="button" @click="toggleTheme">
+          <button class="theme-btn" type="button" v-magnetic="0.25" @click="toggleTheme">
             {{ theme === 'light' ? '🌙 深色' : '☀️ 浅色' }}
           </button>
-          <button class="theme-btn" type="button" @click="toggleBackgroundMotion">
+          <button class="theme-btn" type="button" v-magnetic="0.25" @click="toggleBackgroundMotion">
             {{ dynamicBackground ? '🫧 关闭动效' : '✨ 开启动效' }}
           </button>
-          <button class="theme-btn" type="button" @click="toggleMusicPopup">
+          <button class="theme-btn" type="button" v-magnetic="0.25" @click="toggleMusicPopup">
             🎵 音乐
           </button>
         </div>
@@ -363,7 +226,7 @@ const selectTrack = async (trackId: string) => {
 
       <main class="page-wrap">
         <RouterView v-slot="{ Component }">
-          <Transition name="route-fade" mode="out-in">
+          <Transition name="route-rise" mode="out-in">
             <component :is="Component" />
           </Transition>
         </RouterView>
@@ -376,7 +239,7 @@ const selectTrack = async (trackId: string) => {
       <CornerBadge />
 
       <div v-if="showMusicPopup" class="music-mask" @click.self="showMusicPopup = false">
-        <section class="music-popup glass-card">
+        <section class="music-popup glass-card" data-lenis-prevent>
           <div class="music-head">
             <h3>🎶 音乐播放</h3>
             <button type="button" class="music-close-btn" @click="showMusicPopup = false">关闭</button>
@@ -405,6 +268,8 @@ const selectTrack = async (trackId: string) => {
         </section>
       </div>
     </div>
+    <!-- 粒子光标置于 app-shell 直接子级：避免 app-content 的 transform 破坏 fixed 定位 -->
+    <ParticleCursor v-if="introVisible === false" />
     <audio
       ref="audioRef"
       class="bg-audio-player"

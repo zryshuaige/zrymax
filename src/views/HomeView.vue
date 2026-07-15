@@ -1,14 +1,26 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useHead } from '@unhead/vue'
 import { featuredProjects, heroStats, personalHighlights, personalProfile } from '../data/siteData'
 import { fetchHitokoto, fetchWeather, weatherCodeToText } from '../services/apis'
 import { getCardColorStyle } from '../utils/cardPalette'
+import { gsap } from '../plugins/motion'
+import { prefersReducedMotion } from '../composables/usePrefersReducedMotion'
+import { vReveal, vMagnetic } from '../directives'
+import AtroposCard from '../components/AtroposCard.vue'
+import Splitting from 'splitting'
 import siteLogo from '../assets/logo.png'
 
-const quoteText = ref('正在加载今日一句...')
-const quoteSource = ref('Hitokoto')
-const weatherText = ref('天气加载中...')
-const windText = ref('请稍候')
+useHead({ title: '主页' })
+
+const quoteLoading = ref(true)
+const quoteText = ref('')
+const quoteSource = ref('')
+const weatherLoading = ref(true)
+const weatherText = ref('')
+const windText = ref('')
+
+const heroGrid = ref<HTMLElement | null>(null)
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
@@ -25,7 +37,7 @@ const profileMetaItems = computed(() => [
   '🧭 多页面导航 + 个人主页',
 ])
 
-onMounted(async () => {
+const loadLiveContent = async () => {
   try {
     const quote = await fetchHitokoto()
     quoteText.value = quote.hitokoto
@@ -33,6 +45,8 @@ onMounted(async () => {
   } catch {
     quoteText.value = '保持热爱，奔赴下一场山海。'
     quoteSource.value = 'zrymax'
+  } finally {
+    quoteLoading.value = false
   }
 
   try {
@@ -42,14 +56,71 @@ onMounted(async () => {
   } catch {
     weatherText.value = '天气服务暂不可用'
     windText.value = '请稍后刷新重试'
+  } finally {
+    weatherLoading.value = false
   }
+}
+
+const runHeroEntrance = () => {
+  if (prefersReducedMotion() || !heroGrid.value) return
+  const root = heroGrid.value
+
+  const h1 = root.querySelector<HTMLElement>('.profile-card h1')
+  if (h1) Splitting({ target: h1, by: 'chars' })
+  const chars = h1 ? Array.from(h1.querySelectorAll<HTMLElement>('.char')) : []
+
+  const lines = ['.greeting', '.tagline', '.action-row', '.meta-list']
+    .map((selector) => root.querySelector<HTMLElement>(selector))
+    .filter((el): el is HTMLElement => el !== null)
+
+  const avatar = root.querySelector<HTMLElement>('.avatar-ring')
+  const live = root.querySelector<HTMLElement>('.live-card')
+
+  gsap.set(chars, { opacity: 0, y: 24, rotate: 6 })
+  gsap.set(lines, { opacity: 0, y: 20 })
+  if (avatar) gsap.set(avatar, { opacity: 0, scale: 0.82, rotate: -6 })
+  if (live) gsap.set(live, { opacity: 0, x: 40 })
+
+  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+  if (avatar) tl.to(avatar, { opacity: 1, scale: 1, rotate: 0, duration: 0.7 })
+  if (chars.length) tl.to(chars, { opacity: 1, y: 0, rotate: 0, duration: 0.6, stagger: 0.07 }, '-=0.35')
+  if (lines.length) tl.to(lines, { opacity: 1, y: 0, duration: 0.55, stagger: 0.1 }, '-=0.3')
+  if (live) tl.to(live, { opacity: 1, x: 0, duration: 0.7 }, '-=0.5')
+}
+
+// hero 随滚动视差上移 + 淡出，制造纵深
+const runHeroParallax = () => {
+  if (prefersReducedMotion() || !heroGrid.value) return
+  const profile = heroGrid.value.querySelector<HTMLElement>('.profile-card')
+  const live = heroGrid.value.querySelector<HTMLElement>('.live-card')
+  if (profile) {
+    gsap.to(profile, {
+      yPercent: -14,
+      opacity: 0.4,
+      ease: 'none',
+      scrollTrigger: { trigger: heroGrid.value, start: 'top top', end: 'bottom top', scrub: true },
+    })
+  }
+  if (live) {
+    gsap.to(live, {
+      yPercent: -8,
+      ease: 'none',
+      scrollTrigger: { trigger: heroGrid.value, start: 'top top', end: 'bottom top', scrub: true },
+    })
+  }
+}
+
+onMounted(() => {
+  void loadLiveContent()
+  runHeroEntrance()
+  runHeroParallax()
 })
 </script>
 
 <template>
   <section class="page home-view">
-    <div class="hero-grid">
-      <article class="glass-card profile-card">
+    <div class="hero-grid" ref="heroGrid">
+      <AtroposCard inner-class="glass-card profile-card" :rotate-x-max="6" :rotate-y-max="6" :active-offset="24">
         <div class="avatar-ring" aria-label="ZRY logo">
           <img class="hero-logo" :src="siteLogo" alt="zry logo" />
         </div>
@@ -58,9 +129,9 @@ onMounted(async () => {
         <p class="tagline">{{ personalProfile.tagline }}</p>
 
         <div class="action-row">
-          <RouterLink to="/navigator" class="btn primary">进入导航页</RouterLink>
-          <a class="btn blog-btn" :href="personalProfile.blog" target="_blank" rel="noreferrer">访问主站</a>
-          <a class="btn github-btn" :href="personalProfile.github" target="_blank" rel="noreferrer">GitHub</a>
+          <RouterLink to="/navigator" class="btn primary" v-magnetic>进入导航页</RouterLink>
+          <a class="btn blog-btn" v-magnetic :href="personalProfile.blog" target="_blank" rel="noreferrer">访问主站</a>
+          <a class="btn github-btn" v-magnetic :href="personalProfile.github" target="_blank" rel="noreferrer">GitHub</a>
         </div>
 
         <ul class="meta-list">
@@ -73,19 +144,31 @@ onMounted(async () => {
             {{ item }}
           </li>
         </ul>
-      </article>
+      </AtroposCard>
 
       <article class="glass-card live-card">
         <div class="quote-card">
           <h2 class="card-title">📝 今日一句</h2>
-          <p class="quote-text">{{ quoteText }}</p>
-          <p class="quote-source">来源：{{ quoteSource }}</p>
+          <template v-if="quoteLoading">
+            <span class="skeleton skeleton-line" style="width: 92%"></span>
+            <span class="skeleton skeleton-line" style="width: 64%"></span>
+          </template>
+          <template v-else>
+            <p class="quote-text">{{ quoteText }}</p>
+            <p class="quote-source">来源：{{ quoteSource }}</p>
+          </template>
         </div>
 
         <div class="weather-card">
           <h2 class="card-title">🌤️ 杭州天气</h2>
-          <p class="weather-value">{{ weatherText }}</p>
-          <p class="weather-detail">{{ windText }}</p>
+          <template v-if="weatherLoading">
+            <span class="skeleton skeleton-line" style="width: 50%; height: 1.1rem"></span>
+            <span class="skeleton skeleton-line" style="width: 40%"></span>
+          </template>
+          <template v-else>
+            <p class="weather-value">{{ weatherText }}</p>
+            <p class="weather-detail">{{ windText }}</p>
+          </template>
         </div>
 
         <div class="stat-grid">
@@ -103,7 +186,7 @@ onMounted(async () => {
     </div>
 
     <div class="home-bottom-grid">
-      <article class="glass-card skills-card">
+      <article v-reveal class="glass-card skills-card">
         <h2 class="skills-title">🙋 个人速览</h2>
         <ul class="highlight-list">
           <li
@@ -117,7 +200,7 @@ onMounted(async () => {
         </ul>
       </article>
 
-      <article class="glass-card projects-card">
+      <article v-reveal class="glass-card projects-card">
         <h2 class="projects-title">🚀 项目片段</h2>
         <div class="project-list">
           <div

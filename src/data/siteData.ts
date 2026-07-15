@@ -212,12 +212,40 @@ export const navSections: NavSection[] = [
 ]
 
 export const techStack: TechStackItem[] = [
-  { name: 'Vue 3', desc: '核心框架，负责组件化页面开发与状态驱动渲染。' },
-  { name: 'TypeScript', desc: '提供类型约束，提升可维护性和重构安全性。' },
-  { name: 'Vue Router', desc: '构建多页面体验（首页 / 导航 / 关于）。' },
-  { name: 'Vite', desc: '本地极速开发与静态构建产物输出。' },
-  { name: '原生 Fetch API', desc: '调用外部接口（文案、天气）并渲染实时内容。' },
-  { name: '现代 CSS', desc: '玻璃拟态、渐变背景、关键帧动画与响应式布局。' },
+  {
+    name: 'TresJS + Three',
+    desc: '本站粒子流场背景与多层 WebGL 场景',
+  },
+  {
+    name: '@tresjs/post-processing',
+    desc: 'Bloom + Vignette 后处理，质感的关键',
+  },
+  {
+    name: 'GSAP ScrollTrigger',
+    desc: 'Home 视差、时间轴生长、阅读进度条驱动',
+  },
+  {
+    name: 'Lenis',
+    desc: '全程平滑惯性滚动，并与 ticker 同步',
+  },
+  {
+    name: 'Atropos',
+    desc: 'Hero 3D 倾斜卡片',
+  },
+  {
+    name: 'Splitting',
+    desc: '标题拆字入场与开屏字母逐一浮现',
+  },
+  {
+    name: 'Shiki(core/engine)',
+    desc: 'md 代码块按需高亮，懒加载避免进首屏',
+  },
+  { name: 'ECharts', desc: '科研页 Pareto 前沿与 ARIMA+LSTM 时序预测' },
+  { name: 'd3-force', desc: '科研因果反馈图的力导布局' },
+  { name: 'Vue 3 + Vue Router', desc: '组件化多页面与路由切换转场' },
+  { name: 'TypeScript', desc: '全站类型约束，构建期 vue-tsc 校验' },
+  { name: 'Vite', desc: '极速开发与按需 tree-shaking 构建' },
+  { name: 'CSS 变量 + 设计 token', desc: '统一北卡蓝色板、字体、动效曲线' },
 ]
 
 export const apiCatalog: ApiEntry[] = [
