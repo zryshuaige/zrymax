@@ -164,6 +164,7 @@ a {
 
 /* 大容器/内容卡片：轻量悬停（上浮+边框高亮+加深阴影），不叠加 3D 倾斜（大面倾斜突兀） */
 .live-card,
+.profile-card,
 .skills-card,
 .projects-card,
 .section-card,
@@ -177,12 +178,19 @@ a {
     background var(--dur-1) var(--ease-out-cubic);
 }
 
-.live-card:hover,
 .skills-card:hover,
 .projects-card:hover,
 .section-card:hover,
 .profile-intro-card:hover {
   transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-hover);
+}
+
+/* scrub 视差持续写 inline transform 的卡片（profile/live）用 !important 确保悬停上浮生效 */
+.live-card:hover,
+.profile-card:hover {
+  transform: translateY(-3px) !important;
   border-color: var(--accent);
   box-shadow: var(--shadow-hover);
 }

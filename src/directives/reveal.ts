@@ -32,7 +32,7 @@ export const vReveal: Directive<RevealEl> = {
     const opts = binding.value ?? {}
 
     if (prefersReducedMotion()) {
-      gsap.set(el, { opacity: 1, y: 0 })
+      gsap.set(el, { opacity: 1, clearProps: 'transform' })
       return
     }
 
@@ -49,6 +49,7 @@ export const vReveal: Directive<RevealEl> = {
         ease: 'power3.out',
         stagger: staggerVal,
         delay: opts.delay ?? 0,
+        clearProps: 'transform',
         scrollTrigger: { trigger: el, start, toggleActions: 'play none none none' },
       })
       el._revealCleanup = () => killTween(tween)
@@ -62,6 +63,7 @@ export const vReveal: Directive<RevealEl> = {
       duration: opts.duration ?? 0.7,
       ease: 'power3.out',
       delay: opts.delay ?? 0,
+      clearProps: 'transform',
       scrollTrigger: { trigger: el, start, toggleActions: 'play none none none' },
     })
     el._revealCleanup = () => killTween(tween)
