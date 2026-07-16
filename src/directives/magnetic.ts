@@ -24,8 +24,8 @@ export const vMagnetic: Directive<MagneticEl> = {
       el.style.transform = ''
     }
 
-    el.addEventListener('mousemove', onMove)
-    el.addEventListener('mouseleave', onLeave)
+    el.addEventListener('mousemove', onMove, { passive: true })
+    el.addEventListener('mouseleave', onLeave, { passive: true })
     el._magneticCleanup = () => {
       el.removeEventListener('mousemove', onMove)
       el.removeEventListener('mouseleave', onLeave)

@@ -119,7 +119,7 @@ onMounted(runTimelineGrow)
 
     <Transition name="reader">
       <div v-if="activeAchievement" class="reader-mask" @click.self="closeAchievement">
-        <section ref="readerRef" :class="['reader glass-card', themeTone]" data-lenis-prevent>
+        <section ref="readerRef" :class="['reader glass-card glass-card--blur', themeTone]" data-lenis-prevent>
           <header class="reader-head">
             <div class="reader-title-wrap">
               <span class="reader-icon">{{ activeAchievement.icon }}</span>
@@ -291,7 +291,7 @@ onMounted(runTimelineGrow)
   inset: 0;
   z-index: 40;
   background: rgba(8, 16, 32, 0.5);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(6px);
   display: grid;
   place-items: center;
   padding: 1.5rem;

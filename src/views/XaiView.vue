@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useHead } from '@unhead/vue'
 import { vReveal } from '../directives'
 import { useMobileNet } from '../composables/useMobileNet'
@@ -235,12 +235,25 @@ const paintOverlay = (h: Float32Array) => {
   ctx.putImageData(data, 0, 0)
 }
 
+// 滑块/下拉连续变化时，重计算（occlusionSensitivity 在主线程同步跑多层 TF 推理）做防抖，避免拖动卡顿。
+let layerDebounce = 0
+let targetDebounce = 0
+
 watch(layerIdx, () => {
-  if (mode.value === 'heatmap') void computeHeatmap()
+  if (mode.value !== 'heatmap') return
+  window.clearTimeout(layerDebounce)
+  layerDebounce = window.setTimeout(() => void computeHeatmap(), 250)
 })
 
 watch(targetClass, () => {
-  if (mode.value === 'probe' || mode.value === 'neuron') void computeProbeHeat()
+  if (mode.value !== 'probe' && mode.value !== 'neuron') return
+  window.clearTimeout(targetDebounce)
+  targetDebounce = window.setTimeout(() => void computeProbeHeat(), 250)
+})
+
+onBeforeUnmount(() => {
+  window.clearTimeout(layerDebounce)
+  window.clearTimeout(targetDebounce)
 })
 
 const switchMode = async (m: Mode) => {
@@ -522,7 +535,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
       <!-- 神经元档案弹层 -->
       <Transition name="reader">
         <div v-if="archiveShown" class="xai-archive-mask" @click.self="archiveShown = false">
-          <section class="xai-archive glass-card" data-lenis-prevent>
+          <section class="xai-archive glass-card glass-card--blur" data-lenis-prevent>
             <header class="xai-archive-head">
               <h2>🧠 神经元档案</h2>
               <button type="button" class="btn-icon xai-archive-close" aria-label="关闭" @click="archiveShown = false">×</button>
@@ -656,6 +669,13 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
   text-align: center;
 }
 
+.xai-preset:hover:not(.active),
+.xai-upload:hover:not(.active) {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(30, 64, 124, 0.16);
+}
+
 .xai-preset.active,
 .xai-upload.active {
   border-color: var(--accent);
@@ -690,6 +710,12 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 .xai-mode.active {
   border-color: var(--accent);
   background: rgba(47, 109, 186, 0.1);
+}
+
+.xai-mode:hover:not(.active) {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(30, 64, 124, 0.16);
 }
 
 .xai-mode-label {
@@ -888,6 +914,16 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
   cursor: pointer;
   color: var(--text-primary);
   font-size: 0.86rem;
+  transition:
+    transform var(--dur-1) var(--ease-out-cubic),
+    border-color var(--dur-1) var(--ease-out-cubic),
+    background var(--dur-1) var(--ease-out-cubic);
+}
+
+.xai-brush:hover:not(.active) {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+  background: rgba(47, 109, 186, 0.1);
 }
 
 .xai-brush.active {
@@ -940,7 +976,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
   inset: 0;
   z-index: 40;
   background: rgba(8, 16, 32, 0.55);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(6px);
   display: grid;
   place-items: center;
   padding: 1.5rem;
@@ -975,6 +1011,16 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
   font-size: 1.3rem;
   line-height: 1;
   cursor: pointer;
+  transition:
+    transform var(--dur-1) var(--ease-out-cubic),
+    background var(--dur-1) var(--ease-out-cubic),
+    box-shadow var(--dur-1) var(--ease-out-cubic);
+}
+
+.xai-archive-close:hover {
+  transform: translateY(-2px) scale(1.06);
+  background: rgba(47, 109, 186, 0.14);
+  box-shadow: 0 10px 22px rgba(30, 64, 124, 0.18);
 }
 
 .xai-archive-sub {
@@ -1009,6 +1055,30 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 
 .xai-foot p {
   margin: 0;
+}
+
+/* XaiView 大卡片：轻量悬停（上浮+边框高亮+加深阴影），不叠加 3D 倾斜 */
+.xai-hero,
+.xai-source,
+.xai-modes,
+.xai-stage,
+.xai-foot,
+.xai-loader {
+  transition:
+    transform var(--dur-1) var(--ease-out-cubic),
+    box-shadow var(--dur-1) var(--ease-out-cubic),
+    border-color var(--dur-1) var(--ease-out-cubic);
+}
+
+.xai-hero:hover,
+.xai-source:hover,
+.xai-modes:hover,
+.xai-stage:hover,
+.xai-foot:hover,
+.xai-loader:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-hover);
 }
 
 @media (max-width: 820px) {

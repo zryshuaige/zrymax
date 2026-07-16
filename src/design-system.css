@@ -106,6 +106,16 @@ code, pre, .mono {
   height: 40px;
   padding: 0;
   border-radius: 50%;
+  transition:
+    transform var(--dur-1) var(--ease-out-cubic),
+    background var(--dur-1) var(--ease-out-cubic),
+    box-shadow var(--dur-1) var(--ease-out-cubic);
+}
+
+.btn-icon:hover {
+  transform: translateY(-2px) scale(1.06);
+  --btn-bg: rgba(47, 109, 186, 0.2);
+  box-shadow: 0 10px 22px rgba(30, 64, 124, 0.22);
 }
 
 /* 兼容现有 .theme-btn / .music-control-btn：确保始终可见 */
@@ -113,7 +123,6 @@ code, pre, .mono {
   border: 1px solid var(--card-border);
   background: var(--card-bg);
   color: var(--text-primary);
-  backdrop-filter: blur(10px);
 }
 
 .theme-btn:hover {
@@ -140,8 +149,12 @@ input:focus-visible {
 .glass-card {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  backdrop-filter: blur(14px);
   box-shadow: var(--shadow);
+}
+
+/* 关键容器（导航/弹窗/弹层）按需开启轻量模糊，半径压到 8px 控成本 */
+.glass-card--blur {
+  backdrop-filter: blur(8px);
 }
 
 /* 开屏期间禁止滚动 */
@@ -164,4 +177,15 @@ html.cursor-hidden * {
 html.cursor-hidden input,
 html.cursor-hidden textarea {
   cursor: text !important;
+}
+
+/* 触屏设备禁用 backdrop-filter：移动端 GPU 模糊开销大且收益低 */
+@media (pointer: coarse) {
+  .glass-card--blur,
+  .top-nav,
+  .music-mask,
+  .reader-mask,
+  .xai-archive-mask {
+    backdrop-filter: none !important;
+  }
 }

@@ -10,6 +10,10 @@ let w = 0
 let h = 0
 let dpr = 1
 
+// 预渲染发光精灵：主循环用 drawImage 缩放 stamp，避免逐粒子 createRadialGradient 的高开销。
+let particleSprite: HTMLCanvasElement | null = null
+let coreSprite: HTMLCanvasElement | null = null
+
 interface Particle {
   x: number
   y: number
@@ -29,6 +33,36 @@ let down = false // 鼠标按下
 // 北卡蓝色域：~205-220 蓝
 const HUE_TRAIL = 208
 const HUE_BURST = 200
+
+// 生成一张固定尺寸的径向发光精灵（离屏 canvas），烘焙好颜色与透明度。
+const makeGlowSprite = (stops: Array<[number, string]>, size = 64): HTMLCanvasElement => {
+  const c = document.createElement('canvas')
+  c.width = size
+  c.height = size
+  const cx = c.getContext('2d')!
+  const half = size / 2
+  const g = cx.createRadialGradient(half, half, 0, half, half, half)
+  for (const [offset, color] of stops) g.addColorStop(offset, color)
+  cx.fillStyle = g
+  cx.beginPath()
+  cx.arc(half, half, half, 0, Math.PI * 2)
+  cx.fill()
+  return c
+}
+
+const buildSprites = () => {
+  // 粒子精灵：蓝紫径向辉光，中心 alpha≈0.9（实际透明度由 globalAlpha=life 控制）
+  particleSprite = makeGlowSprite([
+    [0, `hsla(${HUE_TRAIL + 6}, 85%, 62%, 0.9)`],
+    [1, `hsla(${HUE_TRAIL + 6}, 85%, 50%, 0)`],
+  ])
+  // 核心光点精灵：白心 → 蓝光 → 透明
+  coreSprite = makeGlowSprite([
+    [0, 'rgba(255,255,255,0.96)'],
+    [0.4, 'rgba(120,170,230,0.75)'],
+    [1, 'rgba(120,170,230,0)'],
+  ])
+}
 
 const resize = () => {
   const c = canvas.value
@@ -91,46 +125,44 @@ const loop = () => {
 
   spawn()
 
+  // 粒子：drawImage 缩放 stamp 代替逐粒子 createRadialGradient
   ctx.globalCompositeOperation = 'lighter'
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i]
-    p.life -= 0.016 / p.max
-    if (p.life <= 0) {
-      particles.splice(i, 1)
-      continue
+  ctx.globalAlpha = 1
+  if (particleSprite) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i]
+      p.life -= 0.016 / p.max
+      if (p.life <= 0) {
+        particles.splice(i, 1)
+        continue
+      }
+      p.x += p.vx
+      p.y += p.vy
+      if (p.burst) {
+        p.vx *= 0.92
+        p.vy *= 0.92
+        p.vy += 0.02 // 轻微下落
+      } else {
+        p.vx *= 0.95
+        p.vy *= 0.95
+      }
+      const r = p.size * p.life
+      const rad = r * 2.4
+      const side = rad * 2
+      ctx.globalAlpha = p.life
+      ctx.drawImage(particleSprite, p.x - rad, p.y - rad, side, side)
     }
-    p.x += p.vx
-    p.y += p.vy
-    if (p.burst) {
-      p.vx *= 0.92
-      p.vy *= 0.92
-      p.vy += 0.02 // 轻微下落
-    } else {
-      p.vx *= 0.95
-      p.vy *= 0.95
-    }
-    const a = p.life
-    const r = p.size * p.life
-    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.4)
-    g.addColorStop(0, `hsla(${p.hue}, 85%, 62%, ${a * 0.9})`)
-    g.addColorStop(1, `hsla(${p.hue}, 85%, 50%, 0)`)
-    ctx.fillStyle = g
-    ctx.beginPath()
-    ctx.arc(p.x, p.y, r * 2.4, 0, Math.PI * 2)
-    ctx.fill()
   }
 
   // 核心光点（保证点击精度）
   ctx.globalCompositeOperation = 'source-over'
+  ctx.globalAlpha = 1
   const coreR = down ? 7 : active ? 9 : 5
-  const cg = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, coreR * 2.4)
-  cg.addColorStop(0, 'rgba(255,255,255,0.96)')
-  cg.addColorStop(0.4, 'rgba(120,170,230,0.75)')
-  cg.addColorStop(1, 'rgba(120,170,230,0)')
-  ctx.fillStyle = cg
-  ctx.beginPath()
-  ctx.arc(mouse.x, mouse.y, coreR * 2.4, 0, Math.PI * 2)
-  ctx.fill()
+  if (coreSprite) {
+    const rad = coreR * 2.4
+    const side = rad * 2
+    ctx.drawImage(coreSprite, mouse.x - rad, mouse.y - rad, side, side)
+  }
 
   // 可交互元素的指示环
   if (active) {
@@ -151,6 +183,7 @@ const onOver = (e: MouseEvent) => {
   active = !!(t && t.closest('a, button, .btn, input, [role="button"], .nav-link, .timeline-node, .reader-close'))
 }
 const onDown = (e: MouseEvent) => {
+  if (e.button !== 0) return // 仅左键爆裂；中键/右键放行
   down = true
   burst(e.clientX, e.clientY)
 }
@@ -167,6 +200,7 @@ onMounted(() => {
   if (window.matchMedia('(pointer: coarse)').matches) return
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
   resize()
+  buildSprites()
   document.documentElement.classList.add('cursor-hidden')
   window.addEventListener('resize', resize)
   window.addEventListener('mousemove', onMove, { passive: true })

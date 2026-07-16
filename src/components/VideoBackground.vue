@@ -4,6 +4,11 @@ import { weatherState, type WeatherScene } from '../composables/useWeatherState'
 
 // 真实自然风景视频背景，按天气场景切换；mixkit（Envato 官方免费素材站，Mixkit License 允商用）。
 // 仅加载当前天气那一个视频，preload=none 不阻塞首屏；失败回退 .css-bg。
+const props = defineProps<{
+  // 手动场景覆盖：给定时使用该场景而非真实天气；undefined → 跟随 weatherState.scene
+  sceneOverride?: WeatherScene
+}>()
+
 const SCENE_VIDEO: Record<WeatherScene, { src: string; name: string }> = {
   clear: { src: 'https://assets.mixkit.co/videos/51105/51105-720.mp4', name: '白云过晴空' },
   cloudy: { src: 'https://assets.mixkit.co/videos/4132/4132-720.mp4', name: '阿尔卑斯山云' },
@@ -14,13 +19,14 @@ const SCENE_VIDEO: Record<WeatherScene, { src: string; name: string }> = {
 }
 
 const videoRef = ref<HTMLVideoElement | null>(null)
-const current = ref<WeatherScene>(weatherState.scene)
+// 当前场景：有手动覆盖则用覆盖值，否则跟随真实天气
+const current = ref<WeatherScene>(props.sceneOverride ?? weatherState.scene)
 const failed = ref(false)
 const loaded = ref(false)
 
 const active = computed(() => SCENE_VIDEO[current.value] ?? SCENE_VIDEO.clear)
 
-// 日夜联动：夜晚加深
+// 日夜联动：夜晚加深（手动场景也沿用真实日夜，保持氛围一致）
 const videoFilter = computed(() => {
   const night = weatherState.dayNight
   const base = `saturate(${night ? 90 : 108}%) brightness(${night ? 0.5 : 0.78}) contrast(${night ? 115 : 100}%)`
@@ -28,11 +34,26 @@ const videoFilter = computed(() => {
   return base
 })
 
+// 解析「应当展示的场景」：手动覆盖优先，否则真实天气
+const resolvedScene = () => props.sceneOverride ?? weatherState.scene
+
+watch(
+  () => props.sceneOverride,
+  (s) => {
+    const next = s ?? weatherState.scene
+    if (next === current.value) return
+    loaded.value = false
+    current.value = next
+    failed.value = false
+  },
+)
+
 watch(
   () => weatherState.scene,
   (s) => {
+    // 手动覆盖存在时不跟随真实天气
+    if (props.sceneOverride) return
     if (s === current.value) return
-    // 切换：先淡出，换 src，再淡入
     loaded.value = false
     current.value = s
     failed.value = false
@@ -46,7 +67,7 @@ watch(active, () => {
 })
 
 onMounted(() => {
-  current.value = weatherState.scene
+  current.value = resolvedScene()
 })
 
 const onCanPlay = () => {

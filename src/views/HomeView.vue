@@ -6,7 +6,7 @@ import { fetchHitokoto, fetchWeather, weatherCodeToText } from '../services/apis
 import { getCardColorStyle } from '../utils/cardPalette'
 import { gsap } from '../plugins/motion'
 import { prefersReducedMotion } from '../composables/usePrefersReducedMotion'
-import { vReveal, vMagnetic } from '../directives'
+import { vReveal, vMagnetic, vTilt } from '../directives'
 import AtroposCard from '../components/AtroposCard.vue'
 import Splitting from 'splitting'
 import siteLogo from '../assets/logo.png'
@@ -19,6 +19,8 @@ const quoteSource = ref('')
 const weatherLoading = ref(true)
 const weatherText = ref('')
 const windText = ref('')
+let quoteBusy = false
+let weatherBusy = false
 
 const heroGrid = ref<HTMLElement | null>(null)
 
@@ -37,9 +39,15 @@ const profileMetaItems = computed(() => [
   '🧭 多页面导航 + 个人主页',
 ])
 
-const loadLiveContent = async () => {
+// 最小展示延时：避免秒回时骨架屏一闪而过造成跳动
+const minDelay = (ms = 450) => new Promise<void>((r) => setTimeout(r, ms))
+
+const loadQuote = async () => {
+  if (quoteBusy) return
+  quoteBusy = true
+  quoteLoading.value = true
   try {
-    const quote = await fetchHitokoto()
+    const [quote] = await Promise.all([fetchHitokoto(), minDelay()])
     quoteText.value = quote.hitokoto
     quoteSource.value = quote.from_who ? `${quote.from} · ${quote.from_who}` : quote.from
   } catch {
@@ -47,10 +55,16 @@ const loadLiveContent = async () => {
     quoteSource.value = 'zrymax'
   } finally {
     quoteLoading.value = false
+    quoteBusy = false
   }
+}
 
+const loadWeather = async () => {
+  if (weatherBusy) return
+  weatherBusy = true
+  weatherLoading.value = true
   try {
-    const weather = await fetchWeather(30.2741, 120.1551)
+    const [weather] = await Promise.all([fetchWeather(30.2741, 120.1551), minDelay()])
     weatherText.value = `${weatherCodeToText(weather.current.weather_code)} · ${Math.round(weather.current.temperature_2m)}°C`
     windText.value = `风速 ${Math.round(weather.current.wind_speed_10m)} km/h`
   } catch {
@@ -58,8 +72,12 @@ const loadLiveContent = async () => {
     windText.value = '请稍后刷新重试'
   } finally {
     weatherLoading.value = false
+    weatherBusy = false
   }
 }
+
+const refreshQuote = () => void loadQuote()
+const refreshWeather = () => void loadWeather()
 
 const runHeroEntrance = () => {
   if (prefersReducedMotion() || !heroGrid.value) return
@@ -111,7 +129,8 @@ const runHeroParallax = () => {
 }
 
 onMounted(() => {
-  void loadLiveContent()
+  void loadQuote()
+  void loadWeather()
   runHeroEntrance()
   runHeroParallax()
 })
@@ -147,8 +166,13 @@ onMounted(() => {
       </AtroposCard>
 
       <article class="glass-card live-card">
-        <div class="quote-card">
-          <h2 class="card-title">📝 今日一句</h2>
+        <div class="quote-card" v-tilt>
+          <h2 class="card-title">
+            <span>📝 今日一句</span>
+            <button type="button" class="card-refresh-btn" :disabled="quoteLoading" @click="refreshQuote">
+              {{ quoteLoading ? '⏳' : '🔄 换一句' }}
+            </button>
+          </h2>
           <template v-if="quoteLoading">
             <span class="skeleton skeleton-line" style="width: 92%"></span>
             <span class="skeleton skeleton-line" style="width: 64%"></span>
@@ -159,8 +183,13 @@ onMounted(() => {
           </template>
         </div>
 
-        <div class="weather-card">
-          <h2 class="card-title">🌤️ 杭州天气</h2>
+        <div class="weather-card" v-tilt>
+          <h2 class="card-title">
+            <span>🌤️ 杭州天气</span>
+            <button type="button" class="card-refresh-btn" :disabled="weatherLoading" @click="refreshWeather">
+              {{ weatherLoading ? '⏳' : '🔄 刷新' }}
+            </button>
+          </h2>
           <template v-if="weatherLoading">
             <span class="skeleton skeleton-line" style="width: 50%; height: 1.1rem"></span>
             <span class="skeleton skeleton-line" style="width: 40%"></span>
@@ -177,6 +206,7 @@ onMounted(() => {
             :key="item.label"
             class="stat-card color-card"
             :style="getCardColorStyle(index)"
+            v-tilt
           >
             <div class="stat-value">{{ item.value }}</div>
             <div class="stat-label">{{ item.label }}</div>
