@@ -1,6 +1,6 @@
 // Grad-CAM / 可解释性视觉工具集。
 
-// Jet colormap：值 0~1 → [r,g,b] 0~255。生成热图叠加用。
+// Jet colormap：值 0~1 -> [r,g,b] 0~255。神经元档案仍在用。
 export function jet(v: number): [number, number, number] {
   const x = Math.max(0, Math.min(1, v))
   const four = 4 * x
@@ -10,76 +10,95 @@ export function jet(v: number): [number, number, number] {
   return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)]
 }
 
-// 把热图值生成 ImageData（带 alpha，可直接 ctx.putImageData 叠加）。
+// 5 段平滑 Spectral 风格 colormap：深蓝 -> 蓝 -> 青绿 -> 橙 -> 红。
+// 感知更均匀、比 jet 更"热"，配合透明冷区形成经典 saliency 观感。
+const SPECTRAL_STOPS: [number, [number, number, number]][] = [
+  [0.0, [49, 54, 149]], // 深蓝
+  [0.25, [50, 136, 189]], // 蓝
+  [0.5, [102, 194, 165]], // 青绿
+  [0.75, [244, 161, 76]], // 橙
+  [1.0, [214, 47, 39]], // 红
+]
+
+export function spectral(v: number): [number, number, number] {
+  const x = Math.max(0, Math.min(1, v))
+  for (let i = 0; i < SPECTRAL_STOPS.length - 1; i++) {
+    const [t0, c0] = SPECTRAL_STOPS[i]
+    const [t1, c1] = SPECTRAL_STOPS[i + 1]
+    if (x <= t1) {
+      const f = (x - t0) / (t1 - t0 || 1)
+      return [
+        Math.round(c0[0] + (c1[0] - c0[0]) * f),
+        Math.round(c0[1] + (c1[1] - c0[1]) * f),
+        Math.round(c0[2] + (c1[2] - c0[2]) * f),
+      ]
+    }
+  }
+  return SPECTRAL_STOPS[SPECTRAL_STOPS.length - 1][1]
+}
+
+// 把粗网格热图（grid²）双线性插值上采样到 outW×outH，生成带 alpha 的 ImageData。
+// alpha 随热度提升：冷区透明(透出原图)、热区显色 -> 干净的经典 saliency 叠加。
 export function heatToImageData(
   heat: Float32Array,
-  srcW: number,
-  srcH: number,
+  grid: number,
   outW: number,
   outH: number,
-  alpha = 0.5,
+  maxAlpha = 0.72,
 ): ImageData {
   const out = new Uint8ClampedArray(outW * outH * 4)
+  const gMax = grid - 1
   for (let y = 0; y < outH; y++) {
-    const sy = Math.min(srcH - 1, Math.floor((y / outH) * srcH))
+    const gy = (y / (outH - 1)) * gMax
+    const gy0 = Math.floor(gy)
+    const gy1 = Math.min(gMax, gy0 + 1)
+    const fy = gy - gy0
     for (let x = 0; x < outW; x++) {
-      const sx = Math.min(srcW - 1, Math.floor((x / outW) * srcW))
-      const v = heat[sy * srcW + sx]
-      const [r, g, b] = jet(v)
+      const gx = (x / (outW - 1)) * gMax
+      const gx0 = Math.floor(gx)
+      const gx1 = Math.min(gMax, gx0 + 1)
+      const fx = gx - gx0
+      // 四角双线性插值
+      const v00 = heat[gy0 * grid + gx0]
+      const v10 = heat[gy0 * grid + gx1]
+      const v01 = heat[gy1 * grid + gx0]
+      const v11 = heat[gy1 * grid + gx1]
+      const v0 = v00 + (v10 - v00) * fx
+      const v1 = v01 + (v11 - v01) * fx
+      const v = v0 + (v1 - v0) * fy
+      const [r, g, b] = spectral(v)
       const idx = (y * outW + x) * 4
       out[idx] = r
       out[idx + 1] = g
       out[idx + 2] = b
-      out[idx + 3] = Math.round(v * 255 * alpha)
+      out[idx + 3] = Math.round(Math.pow(v, 1.2) * 255 * maxAlpha)
     }
   }
   return new ImageData(out, outW, outH)
 }
 
-// 把热图缩放为粗糙的低分辨率网格(供"神经元档案"档的小拇指图)。
-export function heatDownsample(heat: Float32Array, srcW: number, srcH: number, cell = 14): Float32Array {
-  const out = new Float32Array(cell * cell)
-  for (let j = 0; j < cell; j++) {
-    for (let i = 0; i < cell; i++) {
-      let sum = 0
-      let cnt = 0
-      const y0 = Math.floor((j / cell) * srcH)
-      const y1 = Math.max(y0 + 1, Math.floor(((j + 1) / cell) * srcH))
-      const x0 = Math.floor((i / cell) * srcW)
-      const x1 = Math.max(x0 + 1, Math.floor(((i + 1) / cell) * srcW))
-      for (let y = y0; y < y1; y++) {
-        for (let x = x0; x < x1; x++) {
-          sum += heat[y * srcW + x]
-          cnt++
-        }
-      }
-      out[j * cell + i] = cnt ? sum / cnt : 0
-    }
-  }
-  return out
-}
-
 export type InferFn = (img: HTMLCanvasElement) => Promise<{ className: string; probability: number }[]>
 
-// 纯 JS 朴素遮挡敏感性热图（与 Grad-CAM 视觉等价的近似可解释性图）。
-// pixels: 行优先 RGBA Uint8，w/h 同输入图。infer(accordingly) 用 canvas 元素。
+// 粗网格遮挡敏感性热图：固定 grid×grid 个遮挡块，单次推理/块。
+// 推理数恒定（默认 8×8=64，与 MobileNet 末层 7×7 感受野相当），与"层"解耦，
+// 主线程开销可控且可预期。返回长度 = grid² 的归一化热图。
 export async function occlusionSensitivity(
   sourceCanvas: HTMLCanvasElement,
   infer: InferFn,
   targetClassIdx: number,
-  opts: { size?: number; stride?: number; fill?: string } = {},
+  opts: { grid?: number; fill?: string } = {},
 ): Promise<Float32Array> {
-  const size = opts.size ?? 24
-  const stride = opts.stride ?? 12
+  const grid = opts.grid ?? 8
   const fill = opts.fill ?? 'rgba(0,0,0,1)'
   const w = sourceCanvas.width
   const h = sourceCanvas.height
-  const heat = new Float32Array(w * h)
-  const count = new Float32Array(w * h)
+  const heat = new Float32Array(grid * grid)
+
   // 基线预测
   const base = await infer(sourceCanvas)
   const baseProb = base[targetClassIdx]?.probability ?? 0
-  // 拷贝原图像素用作遮挡恢复
+
+  // 拷贝原图像素用于遮挡后恢复
   const tmp = document.createElement('canvas')
   tmp.width = w
   tmp.height = h
@@ -88,36 +107,78 @@ export async function occlusionSensitivity(
   const orig = tctx.getImageData(0, 0, w, h)
   const ctx = sourceCanvas.getContext('2d')!
   ctx.fillStyle = fill
-  for (let y = 0; y + size <= h; y += stride) {
-    for (let x = 0; x + size <= w; x += stride) {
-      // 遮挡
-      ctx.fillRect(x, y, size, size)
+
+  const bw = w / grid
+  const bh = h / grid
+  for (let j = 0; j < grid; j++) {
+    for (let i = 0; i < grid; i++) {
+      const x = Math.floor(i * bw)
+      const y = Math.floor(j * bh)
+      const sizeX = Math.ceil((i + 1) * bw) - x
+      const sizeY = Math.ceil((j + 1) * bh) - y
+      ctx.fillRect(x, y, sizeX, sizeY)
       const pred = await infer(sourceCanvas)
       const drop = baseProb - (pred[targetClassIdx]?.probability ?? 0)
-      // 恢复
-      ctx.putImageData(orig, 0, 0)
-      for (let dy = 0; dy < size; dy++) {
-        for (let dx = 0; dx < size; dx++) {
-          const idx = (y + dy) * w + (x + dx)
-          heat[idx] += drop
-          count[idx] += 1
-        }
-      }
+      heat[j * grid + i] = drop
+      ctx.putImageData(orig, 0, 0) // 恢复原图
     }
   }
-  // 归一化 0~1
+
+  return normalizeGrid(heat)
+}
+
+// 归一化到 0~1（模糊后对比度下降时用来恢复色阶）。
+export function normalizeGrid(heat: Float32Array): Float32Array {
   let max = -Infinity
   let min = Infinity
   for (let i = 0; i < heat.length; i++) {
-    if (count[i] > 0) {
-      heat[i] = heat[i] / count[i]
-      if (heat[i] > max) max = heat[i]
-      if (heat[i] < min) min = heat[i]
-    } else {
-      heat[i] = 0
-    }
+    if (heat[i] > max) max = heat[i]
+    if (heat[i] < min) min = heat[i]
   }
   const range = max - min || 1
-  for (let i = 0; i < heat.length; i++) heat[i] = (heat[i] - min) / range
-  return heat
+  const out = new Float32Array(heat.length)
+  for (let i = 0; i < heat.length; i++) out[i] = (heat[i] - min) / range
+  return out
+}
+
+// 对粗网格热图做可分离高斯模糊：sigma 越大越弥散，模拟"高层大感受野"。
+// 纯后处理、无推理，故层滑块可即时重绘。
+export function gaussianBlurGrid(heat: Float32Array, grid: number, sigma: number): Float32Array {
+  if (sigma <= 0) return heat
+  const radius = Math.max(1, Math.ceil(sigma * 3))
+  // 1D 高斯核
+  const kernel: number[] = []
+  let ksum = 0
+  for (let i = -radius; i <= radius; i++) {
+    const w = Math.exp(-(i * i) / (2 * sigma * sigma))
+    kernel.push(w)
+    ksum += w
+  }
+  for (let i = 0; i < kernel.length; i++) kernel[i] /= ksum
+  const clamp = (v: number) => Math.min(grid - 1, Math.max(0, v))
+  // 水平 pass
+  const tmp = new Float32Array(grid * grid)
+  for (let j = 0; j < grid; j++) {
+    for (let i = 0; i < grid; i++) {
+      let s = 0
+      for (let k = 0; k < kernel.length; k++) {
+        const ii = clamp(i + k - radius)
+        s += heat[j * grid + ii] * kernel[k]
+      }
+      tmp[j * grid + i] = s
+    }
+  }
+  // 垂直 pass
+  const out = new Float32Array(grid * grid)
+  for (let j = 0; j < grid; j++) {
+    for (let i = 0; i < grid; i++) {
+      let s = 0
+      for (let k = 0; k < kernel.length; k++) {
+        const jj = clamp(j + k - radius)
+        s += tmp[jj * grid + i] * kernel[k]
+      }
+      out[j * grid + i] = s
+    }
+  }
+  return out
 }

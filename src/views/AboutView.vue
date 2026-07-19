@@ -11,8 +11,7 @@ useHead({ title: '关于' })
     <article v-reveal class="glass-card about-intro">
       <h1>关于 zrymax</h1>
       <p>
-        这是一个以 Vue3 为核心构建的静态多页面个人网站，融合了 home-dev 的个人主页表达方式与 websites
-        的导航聚合能力，目标是打造“可用 + 好看 + 易扩展”的前端模板。
+        这是一个以 Vue3 为核心构建的静态多页面个人网站。
       </p>
       <ul class="about-meta">
         <li>👤 作者：{{ personalProfile.name }}</li>

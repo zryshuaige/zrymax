@@ -12,7 +12,8 @@ const props = defineProps<{
 const SCENE_VIDEO: Record<WeatherScene, { src: string; name: string }> = {
   clear: { src: 'https://assets.mixkit.co/videos/51105/51105-720.mp4', name: '白云过晴空' },
   cloudy: { src: 'https://assets.mixkit.co/videos/4132/4132-720.mp4', name: '阿尔卑斯山云' },
-  rain: { src: 'https://assets.mixkit.co/videos/47948/47948-720.mp4', name: '雨景' },
+  //rain: { src: 'https://assets.mixkit.co/videos/47948/47948-720.mp4', name: '雨景' },
+  rain: { src: 'https://assets.mixkit.co/videos/6890/6890-720.mp4', name: '林间雨' },
   snow: { src: 'https://assets.mixkit.co/videos/28844/28844-720.mp4', name: '雪林路' },
   fog: { src: 'https://assets.mixkit.co/videos/22728/22728-720.mp4', name: '雾林' },
   storm: { src: 'https://assets.mixkit.co/videos/47948/47948-720.mp4', name: '雷暴夜雨' },

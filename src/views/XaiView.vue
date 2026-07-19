@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useHead } from '@unhead/vue'
 import { vReveal } from '../directives'
 import { useMobileNet } from '../composables/useMobileNet'
 import { gsap } from '../plugins/motion'
 import { prefersReducedMotion } from '../composables/usePrefersReducedMotion'
-import { occlusionSensitivity, heatToImageData, jet } from '../utils/gradcam'
+import { occlusionSensitivity, heatToImageData, gaussianBlurGrid, normalizeGrid, jet } from '../utils/gradcam'
 import Splitting from 'splitting'
 
 useHead({ title: 'XAI' })
@@ -13,10 +13,10 @@ useHead({ title: 'XAI' })
 type Mode = 'heatmap' | 'probe' | 'neuron' | 'occlusion'
 const mode = ref<Mode>('heatmap')
 const modes: { id: Mode; label: string; hint: string }[] = [
-  { id: 'heatmap', label: '激活热力图', hint: '选某层 → 看模型在看哪' },
-  { id: 'probe', label: '类别探针', hint: '选 top5 之一 → 反推关注区' },
-  { id: 'neuron', label: '神经元探针', hint: '决策关注区 + 神经元档案' },
-  { id: 'occlusion', label: '对抗遮挡', hint: '画笔遮挡 → 看概率流动' },
+  { id: 'heatmap', label: '热力图', hint: '越红的地方，模型越盯着看' },
+  { id: 'probe', label: '找证据', hint: '挑一个预测，看它靠哪里撑起来' },
+  { id: 'neuron', label: '神经元偏好', hint: '关注区，外加它最爱什么画面' },
+  { id: 'occlusion', label: '涂掉看看', hint: '用画笔挡住，看概率怎么变' },
 ]
 
 const { state, progress, errMsg, load, reset } = useMobileNet()
@@ -30,12 +30,13 @@ const overlayCanvas = ref<HTMLCanvasElement | null>(null)
 const archiveCanvas = ref<HTMLCanvasElement | null>(null)
 const heroEl = ref<HTMLElement | null>(null)
 
-// 预设图：picsum 种子化，224² 小尺寸，零本地资源。
+// 预设图：Wikimedia Commons 直链（发送 CORS 头，保证遮挡热图 getImageData 不被污染），
+// 每张都和标签一一对应；零本地资源。
 const presets = [
-  { id: 'cat', label: '猫', src: 'https://picsum.photos/seed/zzcat/224/224' },
-  { id: 'face', label: '人脸', src: 'https://picsum.photos/seed/zzface/224/224' },
-  { id: 'scene', label: '风景', src: 'https://picsum.photos/seed/zzscene/224/224' },
-  { id: 'abstract', label: '抽象', src: 'https://picsum.photos/seed/zzabs/224/224' },
+  { id: 'cat', label: '猫', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Cat_November_2010-1a.jpg/250px-Cat_November_2010-1a.jpg' },
+  { id: 'face', label: '人脸', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Boy_Face_from_Venezuela.jpg/250px-Boy_Face_from_Venezuela.jpg' },
+  { id: 'scene', label: '风景', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Mountains_in_snow%2C_Mountain_lake%2C_Chola_Valley%2C_Nepal%2C_Himalayas.jpg/250px-Mountains_in_snow%2C_Mountain_lake%2C_Chola_Valley%2C_Nepal%2C_Himalayas.jpg' },
+  { id: 'abstract', label: '抽象', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Kandinsky_-_Jaune_Rouge_Bleu.jpg/250px-Kandinsky_-_Jaune_Rouge_Bleu.jpg' },
 ]
 const activePreset = ref(presets[0].id)
 const uploading = ref(false)
@@ -45,9 +46,14 @@ const topK = ref<{ className: string; probability: number }[]>([])
 const targetClass = ref('')
 const busy = ref(false)
 const busyLabel = ref('')
-const heat = ref<Float32Array | null>(null)
-const layerIdx = ref(0) // 模拟"层"：0..6 对应不同平滑度，用于层滑块演示
+// 粗网格分辨率：8×8=64 次推理，与 MobileNet 末层 7×7 感受野相当，恒定且轻量。
+const GRID = 8
+// 热力图模式的基线热图（一次推理得到），层滑块只对其做高斯模糊重绘，无需重算。
+const baseHeat = ref<Float32Array | null>(null)
+const layerIdx = ref(0) // 模拟"层"：0..6 对应高斯模糊强度，越大感受野越弥散
 const LAYERS = 7
+// 每层对应的模糊 sigma：层 0 锐利局部 -> 层 6 弥散平滑
+const SIGMA_PER_LAYER = 0.6
 
 // 神经元档案
 const archiveShown = ref(false)
@@ -95,7 +101,11 @@ const drawPreset = (src: string) =>
       c.width = IMG
       c.height = IMG
       const ctx = c.getContext('2d')!
-      ctx.drawImage(img, 0, 0, IMG, IMG)
+      // 居中裁切到正方形再缩放，避免非方形图被拉伸变形
+      const s = Math.min(img.width, img.height)
+      const sx = (img.width - s) / 2
+      const sy = (img.height - s) / 2
+      ctx.drawImage(img, sx, sy, s, s, 0, 0, IMG, IMG)
       resolve()
     }
     img.onerror = () => resolve()
@@ -175,32 +185,32 @@ const rerunForMode = async () => {
   }
 }
 
-// 热力图：用层滑块控制 occlusionSensitivity 的 size/stride，模拟"不同层感受野"
+// 热力图：一次性粗网格遮挡敏感度，层滑块只做高斯模糊后处理（模拟"不同层感受野"）
 const computeHeatmap = async () => {
   const c = mainCanvas.value
   if (!c || !modelRef.value) return
-  busy.value = true
-  busyLabel.value = `计算第 ${layerIdx.value + 1} 层激活…`
-  // 层 0(底层小感受野) → 6(高层大感受野)
-  const size = 16 + layerIdx.value * 8
-  const stride = Math.max(8, 24 - layerIdx.value * 2)
   const target = targetClass.value || topK.value[0]?.className || ''
-  if (!target) {
-    busy.value = false
-    busyLabel.value = ''
-    return
-  }
+  if (!target) return
+  busy.value = true
+  busyLabel.value = '计算激活敏感度…'
   // infer 回调：返回全 1000 类，按 className 找目标概率
   const inferAll = async (cv: HTMLCanvasElement) => {
     const all = await infer(cv, 1000)
     const hit = all.find((p) => p.className === target)
     return hit ? [{ className: target, probability: hit.probability }] : [{ className: target, probability: 0 }]
   }
-  const h = await occlusionSensitivity(c, inferAll, 0, { size, stride, fill: 'rgba(0,0,0,1)' })
-  heat.value = h
-  paintOverlay(h)
+  const h = await occlusionSensitivity(c, inferAll, 0, { grid: GRID, fill: 'rgba(0,0,0,1)' })
+  baseHeat.value = h
+  paintHeatForLayer()
   busy.value = false
   busyLabel.value = ''
+}
+
+// 按当前层对基线热图做高斯模糊并重绘（纯后处理，无推理，可即时响应滑块）
+const paintHeatForLayer = () => {
+  if (!baseHeat.value) return
+  const blurred = gaussianBlurGrid(baseHeat.value, GRID, layerIdx.value * SIGMA_PER_LAYER)
+  paintOverlay(normalizeGrid(blurred))
 }
 
 // 类别探针 / 神经元探针：固定目标类，算遮挡敏感度
@@ -216,8 +226,7 @@ const computeProbeHeat = async () => {
     const hit = all.find((p) => p.className === target)
     return hit ? [{ className: target, probability: hit.probability }] : [{ className: target, probability: 0 }]
   }
-  const h = await occlusionSensitivity(c, inferAll, 0, { size: 32, stride: 16, fill: 'rgba(0,0,0,1)' })
-  heat.value = h
+  const h = await occlusionSensitivity(c, inferAll, 0, { grid: GRID, fill: 'rgba(0,0,0,1)' })
   paintOverlay(h)
   busy.value = false
   busyLabel.value = ''
@@ -225,24 +234,22 @@ const computeProbeHeat = async () => {
 
 const paintOverlay = (h: Float32Array) => {
   const oc = overlayCanvas.value
-  const c = mainCanvas.value
-  if (!oc || !c) return
+  if (!oc) return
   oc.width = IMG
   oc.height = IMG
   const ctx = oc.getContext('2d')!
   ctx.clearRect(0, 0, IMG, IMG)
-  const data = heatToImageData(h, IMG, IMG, IMG, IMG, 0.55)
+  const data = heatToImageData(h, GRID, IMG, IMG, 0.72)
   ctx.putImageData(data, 0, 0)
 }
 
-// 滑块/下拉连续变化时，重计算（occlusionSensitivity 在主线程同步跑多层 TF 推理）做防抖，避免拖动卡顿。
-let layerDebounce = 0
+// 层滑块：仅高斯模糊重绘基线热图，无推理 -> 即时响应，无需防抖。
+// 目标类下拉仍触发完整遮挡重算，保留防抖避免连点卡顿。
 let targetDebounce = 0
 
 watch(layerIdx, () => {
   if (mode.value !== 'heatmap') return
-  window.clearTimeout(layerDebounce)
-  layerDebounce = window.setTimeout(() => void computeHeatmap(), 250)
+  paintHeatForLayer()
 })
 
 watch(targetClass, () => {
@@ -252,7 +259,6 @@ watch(targetClass, () => {
 })
 
 onBeforeUnmount(() => {
-  window.clearTimeout(layerDebounce)
   window.clearTimeout(targetDebounce)
 })
 
@@ -261,12 +267,12 @@ const switchMode = async (m: Mode) => {
   // 切模式清空 overlay，按需重算
   const oc = overlayCanvas.value
   if (oc) oc.getContext('2d')!.clearRect(0, 0, IMG, IMG)
-  heat.value = null
+  baseHeat.value = null
   archiveShown.value = false
   await rerunForMode()
 }
 
-// 神经元档案：程序化生成 8 张"神经元最爱图样"小图（Gabor/噪声），无需外部 atlas 资源
+// 神经元偏好：程序化生成 8 张"神经元偏爱画面"小图（边缘/纹理/噪声等），无需外部 atlas 资源
 const buildArchive = () => {
   const ac = archiveCanvas.value
   if (!ac) return
@@ -276,7 +282,7 @@ const buildArchive = () => {
   const ctx = ac.getContext('2d')!
   ctx.fillStyle = '#0a1c33'
   ctx.fillRect(0, 0, ac.width, ac.height)
-  const labels = ['Gabor 边缘', '斑点纹理', '径向条纹', '网格', '涡旋', '色块', '高频噪声', '低频梯度']
+  const labels = ['斜向边缘', '斑点纹理', '放射条纹', '网格', '涡旋', '色块', '细密噪点', '柔和渐变']
   for (let i = 0; i < archiveCells; i++) {
     const cx = (i % 4) * cell
     const cy = Math.floor(i / 4) * cell
@@ -309,14 +315,16 @@ const buildArchive = () => {
   }
 }
 
-const openArchive = () => {
+const openArchive = async () => {
   archiveShown.value = true
+  // canvas 在 v-if 内，需等下一帧挂载后才能拿到 ref 作画
+  await nextTick()
   buildArchive()
 }
 
 const onOverlayClick = (_e: MouseEvent) => {
-  // 点击热图区域：在神经元探针模式下弹出档案
-  if (mode.value === 'neuron') openArchive()
+  // 点击热图区域：在神经元偏好模式下弹出档案
+  if (mode.value === 'neuron') void openArchive()
 }
 
 // ===== 对抗遮挡交互 =====
@@ -397,7 +405,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
     <!-- 叙事首屏 -->
     <article ref="heroEl" v-reveal class="glass-card xai-hero">
       <h1>停下来，看看一个神经网络正在看什么</h1>
-      <p class="xai-sub">这里不再告诉你"模型分类成了什么"，而是把它的注意力、它最在意的区域、它的神经元最爱什么图样，摊开给你看。</p>
+      <p class="xai-sub">这里不只告诉你模型认成了什么，还把它的注意力、最在意的地方、神经元偏爱的画面，一并摊开给你看。</p>
       <div class="xai-cta">
         <span class="xai-cta-note">选一张图开始 ↓</span>
       </div>
@@ -458,16 +466,23 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
       <!-- 工作区 -->
       <article v-reveal class="glass-card xai-stage">
         <div class="xai-stage-grid">
-          <!-- 左：画布 -->
-          <div class="xai-canvas-wrap" :class="{ drawing: mode === 'occlusion' }">
-            <canvas ref="mainCanvas" class="xai-canvas" :class="{ occlusion: mode === 'occlusion' }"
-              @mousedown="onCanvasDown" @mousemove="drawBrush" @mouseup="onCanvasUp" @mouseleave="onCanvasUp"
-              @click="onOverlayClick"
-            ></canvas>
-            <canvas ref="overlayCanvas" class="xai-overlay" :class="{ hidden: mode === 'occlusion' }"></canvas>
-            <div v-if="busy" class="xai-busy">
-              <span class="xai-spinner"></span>
-              <span>{{ busyLabel }}</span>
+          <!-- 左：画布 + 图例 -->
+          <div class="xai-stage-left">
+            <div class="xai-canvas-wrap" :class="{ drawing: mode === 'occlusion' }">
+              <canvas ref="mainCanvas" class="xai-canvas" :class="{ occlusion: mode === 'occlusion' }"
+                @mousedown="onCanvasDown" @mousemove="drawBrush" @mouseup="onCanvasUp" @mouseleave="onCanvasUp"
+                @click="onOverlayClick"
+              ></canvas>
+              <canvas ref="overlayCanvas" class="xai-overlay" :class="{ hidden: mode === 'occlusion' }"></canvas>
+              <div v-if="busy" class="xai-busy">
+                <span class="xai-spinner"></span>
+                <span>{{ busyLabel }}</span>
+              </div>
+            </div>
+            <div v-if="mode !== 'occlusion'" class="xai-legend">
+              <span class="xai-legend-label">关注低</span>
+              <span class="xai-legend-bar" aria-hidden="true"></span>
+              <span class="xai-legend-label">关注高</span>
             </div>
           </div>
 
@@ -487,23 +502,23 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 
             <!-- 热力图模式：层滑块 -->
             <div v-if="mode === 'heatmap'" class="xai-block">
-              <h3>观测层 <span class="xai-layer-tag">L{{ layerIdx + 1 }}/{{ LAYERS }}</span></h3>
+              <h3>层级 <span class="xai-layer-tag">L{{ layerIdx + 1 }}/{{ LAYERS }}</span></h3>
               <input type="range" min="0" :max="LAYERS - 1" step="1" v-model.number="layerIdx" class="xai-range" />
-              <p class="xai-tip">底层(小感受野)看边缘纹理；高层(大感受野)看物体部件。滑动即时重算。</p>
+              <p class="xai-tip">拖动看不同层级：底层抓细节边缘，高层看整体部件，滑动即时重绘。</p>
             </div>
 
-            <!-- 探针 / 神经元模式：目标类选择 -->
+            <!-- 找证据 / 神经元偏好模式：选一个预测结果 -->
             <div v-if="mode === 'probe' || mode === 'neuron'" class="xai-block">
-              <h3>目标类别</h3>
+              <h3>想看哪个结果</h3>
               <select v-model="targetClass" class="xai-select">
                 <option v-for="p in topK" :key="p.className" :value="p.className">{{ p.className }}</option>
               </select>
               <button v-if="mode === 'neuron'" type="button" class="btn ghost xai-archive-btn" @click="openArchive">
-                🧠 查看神经元档案
+                🧠 看它偏爱什么画面
               </button>
             </div>
 
-            <!-- 对抗遮挡：画笔控件 -->
+            <!-- 涂掉看看：画笔控件 -->
             <div v-if="mode === 'occlusion'" class="xai-block">
               <h3>画笔</h3>
               <label class="xai-field">
@@ -516,7 +531,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
                 <button :class="['xai-brush', { active: brushFill === 'blur' }]" @click="brushFill = 'blur'">🌫️ 模糊</button>
               </div>
               <button type="button" class="btn ghost" @click="clearOcclusion">↺ 清除</button>
-              <h3>实时概率流动</h3>
+              <h3>实时概率</h3>
               <div class="xai-probbars">
                 <div v-for="p in probHistory" :key="p.className" class="xai-probbar">
                   <span class="xai-probbar-name">{{ p.className }}</span>
@@ -532,18 +547,18 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
         </div>
       </article>
 
-      <!-- 神经元档案弹层 -->
+      <!-- 神经元偏好弹层 -->
       <Transition name="reader">
         <div v-if="archiveShown" class="xai-archive-mask" @click.self="archiveShown = false">
           <section class="xai-archive glass-card glass-card--blur" data-lenis-prevent>
             <header class="xai-archive-head">
-              <h2>🧠 神经元档案</h2>
+              <h2>🧠 神经元偏爱什么</h2>
               <button type="button" class="btn-icon xai-archive-close" aria-label="关闭" @click="archiveShown = false">×</button>
             </header>
-            <p class="xai-archive-sub">下列为该层若干神经元的"激活最大化"图样（程序化预生成示意）。点击画布上的高响应区，对应区域的像素模式会更接近其中某一张——这就是该神经元"最喜欢"的样子。</p>
+            <p class="xai-archive-sub">下面是该层几个神经元“最喜欢”的画面（程序生成的示意）。点画布上发亮的地方：那里越像哪一张，就说明那个神经元越偏爱它。</p>
             <canvas ref="archiveCanvas" class="xai-archive-canvas"></canvas>
             <div class="xai-archive-grid">
-              <span v-for="i in archiveCells" :key="i">N{{ i }} · {{ ['边缘','斑点','条纹','网格','涡旋','色块','高频','低频'][i-1] }}</span>
+              <span v-for="i in archiveCells" :key="i">N{{ i }} · {{ ['边缘','斑点','条纹','网格','涡旋','色块','细密噪点','柔和渐变'][i-1] }}</span>
             </div>
           </section>
         </div>
@@ -743,6 +758,12 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
   align-items: start;
 }
 
+.xai-stage-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
 .xai-canvas-wrap {
   position: relative;
   width: 100%;
@@ -771,7 +792,33 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
   width: 100%;
   height: 100%;
   pointer-events: none;
-  mix-blend-mode: screen;
+}
+
+/* 色阶图例：与 spectral colormap 同色带 */
+.xai-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.xai-legend-label {
+  flex-shrink: 0;
+}
+
+.xai-legend-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 8px;
+  background: linear-gradient(
+    to right,
+    rgb(49, 54, 149),
+    rgb(50, 136, 189),
+    rgb(102, 194, 165),
+    rgb(244, 161, 76),
+    rgb(214, 47, 39)
+  );
 }
 
 .xai-overlay.hidden {
