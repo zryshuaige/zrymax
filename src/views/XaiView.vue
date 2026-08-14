@@ -3,10 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch 
 import { useHead } from '@unhead/vue'
 import { vReveal } from '../directives'
 import { useMobileNet } from '../composables/useMobileNet'
-import { gsap } from '../plugins/motion'
-import { prefersReducedMotion } from '../composables/usePrefersReducedMotion'
 import { occlusionSensitivity, heatToImageData, gaussianBlurGrid, normalizeGrid, jet } from '../utils/gradcam'
-import Splitting from 'splitting'
 
 useHead({ title: 'XAI' })
 
@@ -19,7 +16,7 @@ const modes: { id: Mode; label: string; hint: string }[] = [
   { id: 'occlusion', label: '涂掉看看', hint: '用画笔挡住，看概率怎么变' },
 ]
 
-const { state, progress, errMsg, load, reset } = useMobileNet()
+const { state, phase, progress, errMsg, load, reset } = useMobileNet()
 type Pred = { className: string; probability: number }
 const modelRef = shallowRef<{ classify: (img: HTMLCanvasElement | HTMLImageElement | ImageData, topk?: number) => Promise<Pred[]> } | null>(null)
 
@@ -68,19 +65,8 @@ const probHistory = ref<{ className: string; probability: number }[]>([])
 const isModelReady = computed(() => state.value === 'ready')
 
 const runHeroIntro = () => {
-  if (prefersReducedMotion() || !heroEl.value) return
-  const h1 = heroEl.value.querySelector<HTMLElement>('h1')
-  if (h1) Splitting({ target: h1, by: 'chars' })
-  const chars = h1 ? Array.from(h1.querySelectorAll<HTMLElement>('.char')) : []
-  const sub = heroEl.value.querySelector<HTMLElement>('.xai-sub')
-  const cta = heroEl.value.querySelector<HTMLElement>('.xai-cta')
-  gsap.set(chars, { opacity: 0, y: 24 })
-  if (sub) gsap.set(sub, { opacity: 0, y: 16 })
-  if (cta) gsap.set(cta, { opacity: 0, y: 16 })
-  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
-  if (chars.length) tl.to(chars, { opacity: 1, y: 0, duration: 0.5, stagger: 0.05 })
-  if (sub) tl.to(sub, { opacity: 1, y: 0, duration: 0.5 }, '-=0.3')
-  if (cta) tl.to(cta, { opacity: 1, y: 0, duration: 0.5 }, '-=0.3')
+  // 入场由 CSS [data-reveal] 承担；此处仅保留模型加载触发。
+  void heroEl.value
 }
 
 onMounted(async () => {
@@ -411,17 +397,20 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
       </div>
     </article>
 
-    <!-- 模型加载骨架 / 进度 -->
+    <!-- 模型加载骨架 / 分阶段进度 -->
     <article v-if="!isModelReady" class="glass-card xai-loader">
       <div class="xai-loader-head">
         <h2>正在准备 MobileNet</h2>
-        <p v-if="state === 'loading'">拉取预训练权重（约 5MB），仅本次首次访问需要等待…</p>
+        <p v-if="state === 'loading' && phase === 'weights'">① 拉取预训练权重（约 16MB，仅首次访问需要等待）…</p>
+        <p v-else-if="state === 'loading' && phase === 'backend'">② 初始化 WebGL 计算后端…</p>
+        <p v-else-if="state === 'loading' && phase === 'warmup'">③ 预热推理管线，编译着色器（就绪后首张图不再卡顿）…</p>
         <p v-else-if="state === 'error'" class="xai-err">加载失败：{{ errMsg }} <button class="btn ghost" type="button" @click="retryModel">重试</button></p>
         <p v-else>准备就绪…</p>
       </div>
       <div class="xai-progress">
         <div class="xai-progress-bar" :style="{ width: progress + '%' }"></div>
       </div>
+      <p class="xai-progress-num mono">{{ progress.toFixed(0) }}%</p>
     </article>
 
     <template v-if="isModelReady">
@@ -622,14 +611,15 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 
 .xai-progress {
   height: 6px;
-  border-radius: 6px;
-  background: rgba(47, 109, 186, 0.14);
+  border-radius: 0;
+  background: var(--accent-soft);
   overflow: hidden;
 }
 
 .xai-progress-bar {
   height: 100%;
-  background: linear-gradient(to right, var(--accent), var(--accent-strong));
+  background: var(--accent);
+  background-image: repeating-linear-gradient(90deg, transparent 0 7px, rgba(0, 0, 0, 0.22) 7px 8px);
   transition: width 0.25s ease;
 }
 
@@ -655,7 +645,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
   position: relative;
   width: 88px;
   height: 88px;
-  border-radius: 14px;
+  border-radius: 0;
   overflow: hidden;
   border: 2px solid transparent;
   background: var(--card-bg);
@@ -713,7 +703,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 
 .xai-mode {
   border: 1px solid var(--card-border);
-  border-radius: 12px;
+  border-radius: 0;
   padding: 0.7rem 0.9rem;
   background: var(--card-bg);
   cursor: pointer;
@@ -724,7 +714,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 
 .xai-mode.active {
   border-color: var(--accent);
-  background: rgba(47, 109, 186, 0.1);
+  background: var(--accent-soft);
 }
 
 .xai-mode:hover:not(.active) {
@@ -768,7 +758,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
-  border-radius: 14px;
+  border-radius: 0;
   overflow: hidden;
   background: #0a1c33;
 }
@@ -810,7 +800,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 .xai-legend-bar {
   flex: 1;
   height: 8px;
-  border-radius: 8px;
+  border-radius: 0;
   background: linear-gradient(
     to right,
     rgb(49, 54, 149),
@@ -881,7 +871,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
   align-items: center;
   gap: 0.5rem;
   padding: 0.45rem 0.6rem;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
   font-size: 0.88rem;
@@ -889,7 +879,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 
 .xai-topk li.active {
   border-color: var(--accent);
-  background: rgba(47, 109, 186, 0.1);
+  background: var(--accent-soft);
 }
 
 .xai-rank {
@@ -924,7 +914,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 .xai-select {
   width: 100%;
   padding: 0.5rem 0.6rem;
-  border-radius: 10px;
+  border-radius: 0;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
   color: var(--text-primary);
@@ -955,7 +945,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 
 .xai-brush {
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--card-bg);
   padding: 0.35rem 0.6rem;
   cursor: pointer;
@@ -970,12 +960,12 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 .xai-brush:hover:not(.active) {
   transform: translateY(-1px);
   border-color: var(--accent);
-  background: rgba(47, 109, 186, 0.1);
+  background: var(--accent-soft);
 }
 
 .xai-brush.active {
   border-color: var(--accent);
-  background: rgba(47, 109, 186, 0.12);
+  background: var(--accent-soft);
 }
 
 .xai-probbars {
@@ -999,15 +989,16 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 
 .xai-probbar-track {
   height: 8px;
-  border-radius: 8px;
-  background: rgba(47, 109, 186, 0.14);
+  border-radius: 0;
+  background: var(--accent-soft);
   overflow: hidden;
 }
 
 .xai-probbar-fill {
   display: block;
   height: 100%;
-  background: linear-gradient(to right, var(--accent), var(--accent-strong));
+  background: var(--accent);
+  background-image: repeating-linear-gradient(90deg, transparent 0 7px, rgba(0, 0, 0, 0.22) 7px 8px);
   transition: width 0.3s ease;
 }
 
@@ -1032,7 +1023,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 .xai-archive {
   width: min(640px, 96vw);
   padding: 1.2rem 1.4rem;
-  border-radius: 18px;
+  border-radius: 0;
 }
 
 .xai-archive-head {
@@ -1066,7 +1057,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 
 .xai-archive-close:hover {
   transform: translateY(-2px) scale(1.06);
-  background: rgba(47, 109, 186, 0.14);
+  background: var(--accent-soft);
   box-shadow: 0 10px 22px rgba(30, 64, 124, 0.18);
 }
 
@@ -1079,7 +1070,7 @@ const maxProb = computed(() => Math.max(...probHistory.value.map((p) => p.probab
 .xai-archive-canvas {
   width: 100%;
   height: auto;
-  border-radius: 10px;
+  border-radius: 0;
   background: #0a1c33;
 }
 

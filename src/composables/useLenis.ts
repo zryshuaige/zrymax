@@ -1,15 +1,14 @@
 import { onBeforeUnmount, onMounted } from 'vue'
 import Lenis from 'lenis'
-import { gsap, ScrollTrigger } from '../plugins/motion'
 import { prefersReducedMotion } from './usePrefersReducedMotion'
 
 /**
- * 初始化 Lenis 平滑滚动，并与 GSAP 的 ticker / ScrollTrigger 联动。
+ * 初始化 Lenis 平滑滚动（自带 rAF 循环，零 GSAP 依赖）。
  * 在「减弱动效」偏好下直接跳过，保持原生滚动。
  */
 export function useLenis() {
   let lenis: Lenis | null = null
-  let ticker: ((time: number) => void) | null = null
+  let rafId = 0
 
   onMounted(() => {
     if (prefersReducedMotion()) {
@@ -23,19 +22,16 @@ export function useLenis() {
       touchMultiplier: 1.6,
     })
 
-    lenis.on('scroll', () => {
-      ScrollTrigger.update()
-    })
-
-    ticker = (time: number) => lenis?.raf(time * 1000)
-    gsap.ticker.add(ticker)
-    gsap.ticker.lagSmoothing(0)
+    const raf = (time: number) => {
+      lenis?.raf(time)
+      rafId = requestAnimationFrame(raf)
+    }
+    rafId = requestAnimationFrame(raf)
   })
 
   onBeforeUnmount(() => {
-    if (ticker) gsap.ticker.remove(ticker)
+    cancelAnimationFrame(rafId)
     lenis?.destroy()
     lenis = null
-    ticker = null
   })
 }

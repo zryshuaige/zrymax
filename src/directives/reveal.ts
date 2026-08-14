@@ -1,75 +1,39 @@
-import type { Directive, DirectiveBinding } from 'vue'
-import { gsap } from '../plugins/motion'
+import type { Directive } from 'vue'
 import { prefersReducedMotion } from '../composables/usePrefersReducedMotion'
 
-type RevealOptions = {
-  /** 入场前纵向位移，默认 36 */
-  y?: number
-  /** 入场前透明度，默认 0 */
-  opacity?: number
-  /** 时长（秒），默认 0.7 */
-  duration?: number
-  /** 延迟（秒），默认 0 */
-  delay?: number
-  /** 触发起点，默认 'top 85%' */
-  start?: string
-  /** 设置后改为对直接子元素做 stagger 入场；可为 true 或具体秒数 */
-  stagger?: boolean | number
-}
-
+/**
+ * v-reveal：IntersectionObserver 驱动的滚动显现。
+ * 只负责给元素挂/摘 data-reveal 与 .is-in，动画全部由 CSS 承担。
+ */
 interface RevealEl extends HTMLElement {
-  _revealCleanup?: () => void
+  _revealObserver?: IntersectionObserver
 }
 
-const killTween = (tween: gsap.core.Tween) => {
-  const trigger = (tween as unknown as { scrollTrigger?: { kill: () => void } }).scrollTrigger
-  trigger?.kill()
-  tween.kill()
+const bind = (el: RevealEl) => {
+  if (prefersReducedMotion()) {
+    el.classList.add('is-in')
+    return
+  }
+  el.setAttribute('data-reveal', '')
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          ;(entry.target as HTMLElement).classList.add('is-in')
+          observer.unobserve(entry.target)
+        }
+      }
+    },
+    { rootMargin: '0px 0px -8% 0px', threshold: 0.05 },
+  )
+  observer.observe(el)
+  el._revealObserver = observer
 }
 
 export const vReveal: Directive<RevealEl> = {
-  mounted(el, binding: DirectiveBinding<RevealOptions>) {
-    const opts = binding.value ?? {}
-
-    if (prefersReducedMotion()) {
-      gsap.set(el, { opacity: 1, clearProps: 'transform' })
-      return
-    }
-
-    const start = opts.start ?? 'top 85%'
-
-    if (opts.stagger) {
-      const children = Array.from(el.children) as HTMLElement[]
-      const staggerVal = typeof opts.stagger === 'number' ? opts.stagger : 0.08
-      gsap.set(children, { opacity: 0, y: opts.y ?? 28 })
-      const tween = gsap.to(children, {
-        opacity: 1,
-        y: 0,
-        duration: opts.duration ?? 0.6,
-        ease: 'power3.out',
-        stagger: staggerVal,
-        delay: opts.delay ?? 0,
-        clearProps: 'transform',
-        scrollTrigger: { trigger: el, start, toggleActions: 'play none none none' },
-      })
-      el._revealCleanup = () => killTween(tween)
-      return
-    }
-
-    gsap.set(el, { opacity: opts.opacity ?? 0, y: opts.y ?? 36 })
-    const tween = gsap.to(el, {
-      opacity: 1,
-      y: 0,
-      duration: opts.duration ?? 0.7,
-      ease: 'power3.out',
-      delay: opts.delay ?? 0,
-      clearProps: 'transform',
-      scrollTrigger: { trigger: el, start, toggleActions: 'play none none none' },
-    })
-    el._revealCleanup = () => killTween(tween)
-  },
+  mounted: bind,
   unmounted(el) {
-    el._revealCleanup?.()
-    el._revealCleanup = undefined
+    el._revealObserver?.disconnect()
+    delete el._revealObserver
   },
 }

@@ -1,10 +1,29 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>zrymax</title>
+    <meta name="description" content="zry 的个人站点 —— 一座数字温室：个人档案、站点索引与 XAI 实验室。" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <title>Aster · zry 的数字温室</title>
+    <script>
+      // 首帧前写入主题，避免夜间用户闪白
+      ;(function () {
+        var cached = null
+        try {
+          cached = localStorage.getItem('zrymax-theme')
+        } catch (e) {}
+        var mode =
+          cached === 'light' || cached === 'dark'
+            ? cached
+            : window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light'
+        document.documentElement.setAttribute('data-theme', mode)
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>

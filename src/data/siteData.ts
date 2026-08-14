@@ -52,9 +52,16 @@ export interface AchievementItem {
   detailFile: string
 }
 
+export interface InternshipItem {
+  org: string
+  role: string
+  period: string
+  current: boolean
+}
+
 export const personalProfile = {
   name: 'zry',
-  role: 'Technical Documentation Engineer Intern , Hikrobot',
+  role: '数智化实习生 · 吉利（进行中）',
   tagline: '个人主页',
   location: 'Hangzhou, China',
   email: 'zry@zufe.edu.cn',
@@ -63,9 +70,14 @@ export const personalProfile = {
   research : '粒计算与知识发现, 智能决策与优化算法',
 }
 
+export const internships: InternshipItem[] = [
+  { org: '吉利', role: '数智化实习生', period: '进行中', current: true },
+  { org: 'Hikrobot 海康机器人', role: '技术文档开发工程师实习生', period: '已结束', current: false },
+]
+
 export const heroStats: HeroStat[] = [
   { label: '上线页面', value: '20+' },
-  { label: '实习经历', value: '1ing' },
+  { label: '实习经历', value: '2 段' },
   { label: '科研论文', value: '1+1ing' },
 ]
 
@@ -81,10 +93,10 @@ export const skillTags: string[] = [
 ]
 
 export const personalHighlights: string[] = [
-  '🎯 研究方向：粒计算与知识发现、智能决策与优化算法',
-  '🧠 关注重点：体验驱动开发与稳定交付',
-  '📚 日常节奏：输入新知 + 输出总结',
-  '🤝 欢迎交流：科研、前端体验与产品思考',
+  '专注方向：AI 应用工程 —— 把大模型能力落成稳定、可用的产品功能。',
+  '技术日常：LLM 应用编排、RAG 检索增强、Agent 工作流与前端体验。',
+  '研究背景：粒计算与知识发现、智能决策与优化算法。',
+  '欢迎交流：AI 应用落地、前端体验与产品思考，来信必复。',
 ]
 
 export const featuredProjects: FeaturedProject[] = [
@@ -158,17 +170,17 @@ export const navSections: NavSection[] = [
     ],
   },
   {
-    id: 'dev',
-    title: '开发工具',
-    icon: '🛠️',
-    description: '前端开发常用文档、平台与调试工具',
+    id: 'ai',
+    title: 'AI 效率',
+    icon: '🤖',
+    description: '日常提效的 AI 与自动化平台',
     links: [
-      { name: 'MDN', url: 'https://developer.mozilla.org/zh-CN/', desc: 'Web API 与标准文档', tag: 'Docs' },
-      { name: 'Vite', url: 'https://vite.dev/', desc: '下一代前端构建工具', tag: 'Build' },
-      { name: 'Can I use', url: 'https://caniuse.com/', desc: '浏览器兼容性查询', tag: 'Compat' },
-      { name: 'Stack Overflow', url: 'https://stackoverflow.com/', desc: '开发问题检索', tag: 'Q&A' },
-      { name: 'CodePen', url: 'https://codepen.io/', desc: '在线前端实验场', tag: 'Demo' },
-      { name: 'Naive UI', url: 'https://www.naiveui.com/zh-CN/', desc: 'Vue3 组件库文档', tag: 'UI' },
+      { name: 'ChatGPT', url: 'https://chat.openai.com/', desc: '通用助手与创作支持', tag: 'LLM' },
+      { name: 'Claude', url: 'https://claude.ai/', desc: '文档分析与对话助手', tag: 'Assistant' },
+      { name: 'DeepSeek', url: 'https://chat.deepseek.com/', desc: '国产深度推理大模型', tag: 'LLM' },
+      { name: 'Kimi', url: 'https://www.kimi.com/', desc: '长文本阅读与资料整理', tag: 'LLM' },
+      { name: 'MiniMax', url: 'https://www.minimaxi.com/', desc: 'MiniMax 大模型与海螺 AI', tag: 'LLM' },
+      { name: 'GitHub Copilot', url: 'https://github.com/features/copilot', desc: '代码补全与辅助开发', tag: 'Code AI' },
     ],
   },
   {
@@ -189,63 +201,57 @@ export const navSections: NavSection[] = [
     id: 'learn',
     title: '学习社区',
     icon: '📚',
-    description: '课程、教程与技术趋势追踪',
+    description: '技术文档、博客与问答社区',
     links: [
       { name: 'Vue 文档', url: 'https://cn.vuejs.org/', desc: 'Vue3 官方中文文档', tag: 'Vue' },
       { name: 'TypeScript', url: 'https://www.typescriptlang.org/', desc: 'TS 官方手册', tag: 'TS' },
-      { name: '阮一峰周刊', url: 'https://www.ruanyifeng.com/blog/', desc: '技术新闻与新工具', tag: 'Weekly' },
-      { name: 'freeCodeCamp', url: 'https://www.freecodecamp.org/', desc: '系统化编程学习平台', tag: 'Course' },
-    ],
-  },
-  {
-    id: 'ai',
-    title: 'AI 效率',
-    icon: '🤖',
-    description: '日常提效的 AI 与自动化平台',
-    links: [
-      { name: 'ChatGPT', url: 'https://chat.openai.com/', desc: '通用助手与创作支持', tag: 'LLM' },
-      { name: 'GitHub Copilot', url: 'https://github.com/features/copilot', desc: '代码补全与辅助开发', tag: 'Code AI' },
-      { name: 'Claude', url: 'https://claude.ai/', desc: '文档分析与对话助手', tag: 'Assistant' },
-      { name: 'Perplexity', url: 'https://www.perplexity.ai/', desc: '搜索增强型问答', tag: 'Search AI' },
+      { name: 'CSDN', url: 'https://www.csdn.net/', desc: '中文开发者社区与博客', tag: 'Community' },
+      { name: '博客园', url: 'https://www.cnblogs.com/', desc: '老牌技术博客社区', tag: 'Blog' },
+      { name: 'SegmentFault', url: 'https://segmentfault.com/', desc: '中文技术问答社区', tag: 'Q&A' },
+      { name: 'Stack Overflow', url: 'https://stackoverflow.com/', desc: '全球开发问题检索', tag: 'Q&A' },
     ],
   },
 ]
 
 export const techStack: TechStackItem[] = [
   {
-    name: 'TresJS + Three',
-    desc: '本站粒子流场背景与多层 WebGL 场景',
+    name: 'Vue 3 + Vue Router',
+    desc: '组件化多页面与路由切换转场，全部视图路由级懒加载',
   },
   {
-    name: '@tresjs/post-processing',
-    desc: 'Bloom + Vignette 后处理，质感的关键',
+    name: 'TypeScript',
+    desc: '全站类型约束，构建期 vue-tsc 校验',
   },
   {
-    name: 'GSAP ScrollTrigger',
-    desc: 'Home 视差、时间轴生长、阅读进度条驱动',
+    name: 'Vite',
+    desc: '极速开发与按需 tree-shaking 构建，重依赖全部移出首屏',
   },
   {
     name: 'Lenis',
-    desc: '全程平滑惯性滚动，并与 ticker 同步',
+    desc: '平滑惯性滚动，自带 rAF 循环，零额外依赖',
   },
   {
-    name: 'Atropos',
-    desc: 'Hero 3D 倾斜卡片',
+    name: 'Fraunces + Noto Serif SC',
+    desc: '拉丁刊头衬线与中文宋体的双排版系统',
   },
   {
-    name: 'Splitting',
-    desc: '标题拆字入场与开屏字母逐一浮现',
+    name: 'JetBrains Mono + 等宽数字',
+    desc: '全部数据、标签与元信息使用 tabular-nums 对齐',
   },
   {
-    name: 'Shiki(core/engine)',
-    desc: 'md 代码块按需高亮，懒加载避免进首屏',
+    name: '1px 网格版律',
+    desc: '无卡片、无阴影、无圆角；层级靠字号、字重与留白',
   },
-  { name: 'ECharts', desc: '科研页 Pareto 前沿与 ARIMA+LSTM 时序预测' },
-  { name: 'd3-force', desc: '科研因果反馈图的力导布局' },
-  { name: 'Vue 3 + Vue Router', desc: '组件化多页面与路由切换转场' },
-  { name: 'TypeScript', desc: '全站类型约束，构建期 vue-tsc 校验' },
-  { name: 'Vite', desc: '极速开发与按需 tree-shaking 构建' },
-  { name: 'CSS 变量 + 设计 token', desc: '统一北卡蓝色板、字体、动效曲线' },
+  {
+    name: 'IntersectionObserver',
+    desc: '滚动显现由原生 IO + CSS 过渡承担，无 JS 动画库',
+  },
+  {
+    name: 'Shiki (core/engine)',
+    desc: '长文代码块按需高亮，懒加载避免进首屏',
+  },
+  { name: 'TensorFlow.js + MobileNet', desc: 'XAI 实验室的浏览器端推理，路由级分包按需加载' },
+  { name: 'Canvas 2D', desc: '全站孢子粒子场背景与 XAI 热力图绘制' },
 ]
 
 export const apiCatalog: ApiEntry[] = [
