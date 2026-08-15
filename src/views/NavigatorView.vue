@@ -36,9 +36,10 @@ const getHostname = (url: string) => {
   }
 }
 
-/* 站点 favicon：icon.horse → Google s2 → 站点自身 favicon.ico → 本地兜底 */
-const getSiteLogo = (url: string) => {
-  const hostname = getHostname(url)
+/* 站点 favicon：icon.horse → Google s2 → 站点自身 favicon.ico → 本地兜底
+   iconHost：链接是子域名（如 chat.deepseek.com）时用主域取图标 */
+const getSiteLogo = (url: string, iconHost?: string) => {
+  const hostname = iconHost || getHostname(url)
   return hostname ? `https://icon.horse/icon/${hostname}` : '/favicon.svg'
 }
 
@@ -185,8 +186,8 @@ onBeforeUnmount(() => {
           >
             <img
               class="link-favicon"
-              :src="getSiteLogo(site.url)"
-              :data-hostname="getHostname(site.url)"
+              :src="getSiteLogo(site.url, site.icon)"
+              :data-hostname="site.icon || getHostname(site.url)"
               data-fallback-step="0"
               loading="lazy"
               decoding="async"

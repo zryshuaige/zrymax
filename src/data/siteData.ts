@@ -21,6 +21,8 @@ export interface NavLink {
   url: string
   desc: string
   tag: string
+  /** favicon 取图用的域名（链接是子域名且图标服务解析不到时，填主域） */
+  icon?: string
 }
 
 export interface NavSection {
@@ -175,9 +177,9 @@ export const navSections: NavSection[] = [
     icon: '🤖',
     description: '日常提效的 AI 与自动化平台',
     links: [
-      { name: 'ChatGPT', url: 'https://chat.openai.com/', desc: '通用助手与创作支持', tag: 'LLM' },
+      { name: 'ChatGPT', url: 'https://chatgpt.com/', desc: '通用助手与创作支持', tag: 'LLM' },
       { name: 'Claude', url: 'https://claude.ai/', desc: '文档分析与对话助手', tag: 'Assistant' },
-      { name: 'DeepSeek', url: 'https://chat.deepseek.com/', desc: '国产深度推理大模型', tag: 'LLM' },
+      { name: 'DeepSeek', url: 'https://chat.deepseek.com/', desc: '国产深度推理大模型', tag: 'LLM', icon: 'deepseek.com' },
       { name: 'Kimi', url: 'https://www.kimi.com/', desc: '长文本阅读与资料整理', tag: 'LLM' },
       { name: 'MiniMax', url: 'https://www.minimaxi.com/', desc: 'MiniMax 大模型与海螺 AI', tag: 'LLM' },
       { name: 'GitHub Copilot', url: 'https://github.com/features/copilot', desc: '代码补全与辅助开发', tag: 'Code AI' },
