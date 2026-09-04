@@ -24,6 +24,16 @@ const router = createRouter({
       component: () => import('../views/XaiView.vue'),
     },
     {
+      path: '/xai/embedding',
+      name: 'lab-embedding',
+      component: () => import('../views/LabEmbeddingView.vue'),
+    },
+    {
+      path: '/xai/attention',
+      name: 'lab-attention',
+      component: () => import('../views/LabAttentionView.vue'),
+    },
+    {
       path: '/about',
       name: 'about',
       component: () => import('../views/AboutView.vue'),

@@ -252,8 +252,8 @@ export const techStack: TechStackItem[] = [
     name: 'Shiki (core/engine)',
     desc: '长文代码块按需高亮，懒加载避免进首屏',
   },
-  { name: 'TensorFlow.js + MobileNet', desc: 'XAI 实验室的浏览器端推理，路由级分包按需加载' },
-  { name: 'Canvas 2D', desc: '全站孢子粒子场背景与 XAI 热力图绘制' },
+  { name: '纯前端词向量演示', desc: '实验室的 2D 语义空间：静态数据 + 距离排序，零模型零下载' },
+  { name: 'Canvas 2D', desc: '全站孢子粒子场背景与词向量散点图绘制' },
 ]
 
 export const apiCatalog: ApiEntry[] = [

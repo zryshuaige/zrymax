@@ -4,6 +4,7 @@ import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { useHead } from '@unhead/vue'
 import InkCursor from './components/InkCursor.vue'
 import SkyField from './components/SkyField.vue'
+import FooterWordmark from './components/FooterWordmark.vue'
 import { useLenis } from './composables/useLenis'
 
 type ThemeMode = 'light' | 'dark'
@@ -18,7 +19,7 @@ const navItems: NavItem[] = [
   { to: '/', cn: '首页', en: 'Home' },
   { to: '/navigator', cn: '导航', en: 'Index' },
   { to: '/profile', cn: '简介', en: 'Profile' },
-  { to: '/xai', cn: '实验室', en: 'XAI Lab' },
+  { to: '/xai', cn: '实验室', en: 'ZAI Lab' },
   { to: '/about', cn: '关于', en: 'About' },
 ]
 
@@ -28,10 +29,10 @@ useHead({
   titleTemplate: (title) => (title ? `${title} · Aster` : 'Aster · zry 的数字温室'),
   htmlAttrs: { lang: 'zh-CN' },
   meta: [
-    { name: 'description', content: 'zry 的个人站点 —— 一座数字温室：AI 应用工程师的个人档案、站点索引与 XAI 实验室。' },
+    { name: 'description', content: 'zry 的个人站点 —— 一座数字温室：AI 应用工程师的个人档案、站点索引与 ZAI 实验室。' },
     { name: 'theme-color', content: '#edf5e9' },
     { property: 'og:title', content: 'Aster · zry 的数字温室' },
-    { property: 'og:description', content: '科技与自然并存的个人站点：导航索引、荣誉履历与 XAI 实验室。' },
+    { property: 'og:description', content: '科技与自然并存的个人站点：导航索引、荣誉履历与 ZAI 实验室。' },
     { property: 'og:type', content: 'website' },
   ],
 })
@@ -250,13 +251,13 @@ watch(activeTrackId, (id) => localStorage.setItem('zrymax-track-id', id))
 
     <!-- 页脚：通栏巨字 + 信息栏 -->
     <footer class="site-footer">
-      <span class="footer-wordmark" aria-hidden="true">ASTER<sup>®</sup></span>
+      <FooterWordmark />
       <div class="footer-cols">
         <div class="footer-col">
           <h4>关于本站</h4>
           <p>
             zry 的数字温室：首页是个人档案，导航是常用站点索引，
-            简介是履历，实验室里养着一只可解释的 MobileNet。孢子在场中缓慢漂移。
+            简介是履历，实验室里漂着一片词向量星空。孢子在场中缓慢漂移。
           </p>
         </div>
         <div class="footer-col">

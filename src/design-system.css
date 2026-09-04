@@ -7,7 +7,7 @@
    Fraunces      —— 拉丁刊头/展示衬线（视觉尺寸轴 opsz）
    Noto Serif SC —— 中文刊头/标题宋体
    JetBrains Mono—— 数据、标签、元信息 */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Noto+Serif+SC:wght@600;900&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,100..900&family=Noto+Serif+SC:wght@600;900&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
   /* 字体族 */
@@ -29,7 +29,7 @@
   --signal: #ffbf2e;           /* 信号金：主 CTA / 高能粒子 */
   --signal-ink: #241a02;
 
-  /* 兼容旧变量名（XAI / Markdown 等组件消费） */
+  /* 兼容旧变量名（Markdown 等组件消费） */
   --bg-primary: var(--paper);
   --bg-secondary: var(--paper-raised);
   --text-primary: var(--ink);

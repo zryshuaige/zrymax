@@ -5,7 +5,7 @@ zry 的个人站点「Aster · 数字温室」。基于 **Vue 3** 构建的静�
 - `home-dev` 的个人主页信息展示风格
 - `websites` 的网址导航与搜索聚合体验
 
-最终产物为一个「个人主页 + 搜索聚合 + 分类导航 + 关于说明」的一体化站点，支持漂亮的渐变背景、玻璃拟态卡片、暗色模式与响应式布局。
+最终产物为一个「个人主页 + 搜索聚合 + 分类导航 + ZAI 实验室 + 关于说明」的一体化站点，支持漂亮的渐变背景、玻璃拟态卡片、暗色模式与响应式布局。
 
 ---
 
@@ -31,6 +31,13 @@ zry 的个人站点「Aster · 数字温室」。基于 **Vue 3** 构建的静�
 - 荣誉与经历卡片（含图标）
 - 每个小卡片采用差异化配色，增强视觉层次
 
+### 实验室 `/xai`
+
+- **词向量空间**：55 个中文词的 6 维语义坐标，任选 3 维投影为持续旋转的 3D 星图（Canvas 2D 手写旋转矩阵 + 弱透视，支持拖拽旋转、搜索定位、最近邻连线）；附「词 − 词 + 词」语义算术分步动画（箭头随星球一起旋转）
+- **注意力演进**：MHA → MQA → GQA → MLA 的头结构对比图、相对 KV cache 体积条、注意力模式热力图，以及逐 token 播放的注意力流弧线（与热力图行联动）
+- 两个 demo 共用播放 / 单步 / 重置 / 变速控件（PlaybackBar，空格 = 播放暂停，→ = 单步，R = 重置）
+- 全部为预计算静态示意数据：零模型、零下载、零外部请求
+
 ### 关于页 `/about`
 
 - 项目定位与作者信息
@@ -47,7 +54,11 @@ zry 的个人站点「Aster · 数字温室」。基于 **Vue 3** 构建的静�
 | 构建工具 | Vite |
 | 语言 | TypeScript |
 | 路由 | Vue Router（Hash History，静态部署友好） |
-| 样式 | 原生 CSS（渐变背景、玻璃拟态、关键帧动画、响应式） |
+| 文档渲染 | markdown-it + Shiki（代码块按需懒加载高亮） |
+| Head 管理 | @unhead/vue |
+| 滚动与动效 | Lenis 平滑滚动 + IntersectionObserver 滚动显现（无动画库） |
+| 可视化 | Canvas 2D / SVG 手写实现（零图表库、零模型运行时） |
+| 样式 | 原生 CSS（设计系统变量、暗色模式、关键帧动画、响应式） |
 | 数据请求 | Fetch API |
 
 ---
@@ -131,19 +142,33 @@ npm run preview
 
 ```text
 zrymax
+├─ public                   # 静态资源（成就文档、favicon）
 ├─ src
+│  ├─ components
+│  │  ├─ FooterWordmark.vue # 页脚巨字：陶土赭/冰蓝 + 墨色双色套印（落版/重印动效）
+│  │  ├─ InkCursor.vue      # 自定义墨迹光标
+│  │  ├─ MarkdownDoc.vue    # Markdown 渲染（Shiki 高亮）
+│  │  ├─ SkyField.vue       # 孢子场背景
+│  │  └─ lab
+│  │     ├─ EmbeddingSpace.vue   # 实验室：3D 词向量星图 + 语义算术动画
+│  │     ├─ AttentionLab.vue     # 实验室：注意力机制演进对比 + 注意力流弧线
+│  │     └─ PlaybackBar.vue      # 实验室：共享播放/单步/重置/变速控件
+│  ├─ composables           # useLenis / useObservatory / usePrefersReducedMotion
 │  ├─ data
-│  │  └─ siteData.ts
+│  │  ├─ siteData.ts        # 站点内容配置
+│  │  ├─ wordVectors.ts     # 6 维词向量示意数据
+│  │  └─ attentionData.ts   # 注意力机制结构与模式数据
+│  ├─ directives            # v-reveal 滚动显现
 │  ├─ router
 │  │  └─ index.ts
 │  ├─ services
-│  │  └─ apis.ts
-│  ├─ views
-│  │  ├─ HomeView.vue
-│  │  ├─ NavigatorView.vue
-│  │  └─ AboutView.vue
+│  │  └─ apis.ts            # 一言 / 天气 API
+│  ├─ utils
+│  │  └─ markdown.ts
+│  ├─ views                 # Home / Navigator / Profile / Xai(实验室) / About
 │  ├─ App.vue
 │  ├─ main.ts
+│  ├─ design-system.css
 │  └─ style.css
 ├─ package.json
 └─ README.md

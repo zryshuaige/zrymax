@@ -318,27 +318,6 @@ body::before {
   border-top: 1px solid var(--rule);
 }
 
-.footer-wordmark {
-  display: block;
-  width: 100%;
-  padding: 0 1vw;
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: clamp(4rem, 17.5vw, 15rem);
-  line-height: 0.92;
-  letter-spacing: -0.015em;
-  text-align: center;
-  white-space: nowrap;
-  user-select: none;
-  color: var(--ink);
-}
-
-.footer-wordmark sup {
-  font-size: 0.12em;
-  vertical-align: super;
-  letter-spacing: 0;
-}
-
 .footer-cols {
   max-width: 1320px;
   margin: 0 auto;
@@ -1103,15 +1082,6 @@ body::before {
 
 .search-go:active {
   transform: translateY(1px);
-}
-
-/* XAI 加载百分比读数 */
-.xai-progress-num {
-  margin: 0.5rem 0 0;
-  font-size: 0.7rem;
-  letter-spacing: 0.14em;
-  color: var(--ink-soft);
-  font-variant-numeric: tabular-nums;
 }
 
 /* 孢子场画布：沉到正文之下（z-index:-1），星点不再压住文字 */

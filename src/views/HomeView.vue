@@ -189,7 +189,7 @@ onMounted(() => {
               <span>GitHub 档案</span><span class="ext-arrow">↗</span>
             </a>
             <RouterLink to="/xai" class="btn">
-              <span>进入 XAI 实验室</span><span class="ext-arrow">→</span>
+              <span>进入 ZAI 实验室</span><span class="ext-arrow">→</span>
             </RouterLink>
           </div>
         </div>
